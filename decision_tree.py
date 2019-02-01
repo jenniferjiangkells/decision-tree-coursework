@@ -15,9 +15,6 @@ noisydata=np.loadtxt('wifi_db/noisy_dataset.txt')
 
 
 def split_data(index,feature, data):
-
-    #return dataset[:index,:], dataset[index:,:]
-
     left = np.where(data[:,feature] <= index)
     right = np.where(data[:,feature] > index)
     left_dataset = data[left]
@@ -26,27 +23,22 @@ def split_data(index,feature, data):
 
 
 def find_split(dataset):
-    best_feature = 0
-    best_gain = 0
-    split_value =0
-    #get total number of features in dataset
-    features = dataset.shape[0] -1
-    print(features)
+    #initialize values
+    best_feature, best_value, best_gain = 0, 0.0, 0.0
     for feature in range(7):
         #get all unique classes for a feature
         unique_set = np.unique(dataset[:,feature])
-        print(unique_set)
-        print(unique_set.shape)
         for index in unique_set:
-            left_dataset, right_dataset = split_data(split_value, feature,dataset)
-            if len(left_dataset) == 0 or len(right_dataset) == 0:
-                continue
-             #calculate the information gain
-            gain = get_info_gain(dataset,left_dataset,right_dataset)
+            left_dataset, right_dataset = split_data(index,feature,dataset)
+            #calculate the information gain
+            gain = get_info_gain(dataset, left_dataset, right_dataset)
+            if len(left_dataset)==0 or len(right_dataset)==0:
+               continue
             if gain > best_gain:
-                best_feature = feature
+                best_feature = feature +1
+                best_value = index
                 best_gain = gain
-    return best_feature, best_gain
+    return best_feature, best_value
 
 def get_entropy(dataset):
     entropy = 0
@@ -61,37 +53,47 @@ def get_entropy(dataset):
 def get_info_gain(current, left, right):
     #get the full entropy of the dataset
     total_entropy = get_entropy(current)
-    total = len(current)
-    gain = total_entropy - ((len(left)/total)* get_entropy(left) + (len(right)/total) * get_entropy(right))
+    total = current.shape[0]
+    gain = total_entropy - ((left.shape[0]/total)* get_entropy(left) + (right.shape[0]/total) * get_entropy(right))
     return gain
 
-
-
-
-
+np.random.seed(0)
 
 #Decision tree algorithm
 def decision_tree_learning(dataset,depth):
     if len(np.unique(dataset[:, 7])) == 1:
-        terminal_node = {'attribute': 'leaf', 'value': data[0, 7], 'left': {}, 'right': {}}
+        attribute = np.unique(dataset[:,7])
+        terminal_node = {'attribute':int(attribute),'leaf':1,'value':0,'left': None,'right': None}
         return terminal_node, depth
     else:
         attribute, value = find_split(dataset)
-        l = dataset[:, attribute] <= value
-        r = dataset[:, attribute] > value
+        l =np.where(dataset[:, attribute-1] <= value)
+        r =np.where(dataset[:, attribute-1] > value)
         l_dataset = dataset[l]
         r_dataset = dataset[r]
         l_branch, l_depth = decision_tree_learning(l_dataset,depth+1)
         r_branch, r_depth = decision_tree_learning(r_dataset,depth+1)
-        node = {'attribute': attribute, 'value': value, 'left': l_branch, 'right': r_branch}
+        node = {'attribute': attribute,'leaf': 0, 'value': value, 'left': l_branch, 'right': r_branch}
         return node, max(l_depth,r_depth)
 
+
 dt, depth = decision_tree_learning(data,0)
-print(dt)
 print(depth)
+print(dt)
+
+
 
 #Bonus question for printing tree
+
+def visualize(dt):
+    for key in dt.keys():
+        if type(dt[key]).__name__ == 'dict':
+            visualize(dt[key])
+        else:
+            print(key, ":", dt[key])
+
 #def print_tree():
+
 
 ##################################################
 #Evaluation
