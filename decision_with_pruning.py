@@ -137,17 +137,19 @@ def predict(data, model):
 
 # Evaluate accuracy of model
 def test_over_model(tree_model, test_data):
+    actual_labels=[]
+    predicted_labels = []
+
     for data in test_data:
         label = int(data[-1])
         predicted = predict(data, tree_model)
+        actual_labels.append(label)
+        predicted_labels.append(predicted)
 
-        if label == predicted:
-            correct = correct + 1
-            tp[predicted] = tp.get(predicted, 0) + 1
-        else:
-            fp[predicted] = fp.get(predicted, 0) + 1
-            fn[label] = fn.get(label, 0) + 1
-    return correct, tp, fp, fn
+    cmat = get_confusion_matrix(actual_labels,predicted_labels)
+    class_rate = classification_rate(cmat)
+
+    return class_rate
 
 ##################################################
 #Evaluation
@@ -202,6 +204,21 @@ def evaluate(dataset):
     print("Average classification rate: \n", class_rate_sum/10)
 
     return models_array
+
+def get_stats(actual_labels, predicted_labels):
+    cmat_sum = np.zeros((4,4))
+    precision_sum = np.zeros((4))
+    recall_sum = np.zeros((4))
+    f1_sum = np.zeros((4))
+    class_rate_sum = 0
+
+    cmat = get_confusion_matrix(actual_labels,predicted_labels)
+    precision = get_precision(cmat)
+    recall = get_recall(cmat)
+    f1_rate = f1_measure(precision, recall)
+    class_rate = classification_rate(cmat)
+
+    return cmat, precision, recall, f1_rate, class_rate
 
 
 def get_confusion_matrix(actual_labels, predicted_labels):
@@ -325,7 +342,7 @@ def createPlot(myTree):
 def prune(decision_tree, test_data, root):
 	if decision_tree is None:
 		return decision_tree
-	accuracy = test_over_model(root, test_data)[0]
+	accuracy = test_over_model(root, test_data)
 
 	if decision_tree['left'] is None or decision_tree['right'] is None:
 		return
@@ -360,10 +377,10 @@ def prune(decision_tree, test_data, root):
 	decision_tree['left'] = left_pruned
 	decision_tree['right'] = right_pruned
 
-	new_accuracy = test_over_model(root, test_data)[0]
+	new_accuracy = test_over_model(root, test_data)
 
 	# If got better result, apply the changes
-	if int(new_accuracy) >= int(accuracy):
+	if new_accuracy >= accuracy:
 		print('New accuracy %f old accuracy: %f' % (new_accuracy, accuracy))
 		return decision_tree
 	else:
@@ -386,8 +403,8 @@ test_data = clean_data[:start_index]
 print('Max depth of original tree= %d' % get_tree_depth(models[0]))
 print('Start pruning on first model')
 pruned_tree = prune(models[0], test_data, models[0])
-accuracy, tp, fp, fn = test_over_model(pruned_tree, test_data)
-print('New accuracy after prune %f' % accuracy)
+class_rate = test_over_model(pruned_tree, test_data)
+print('New accuracy after prune %f' % class_rate)
 print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
 
 print('\n\n')
@@ -398,7 +415,7 @@ print('Evaluate on noisy dataset')
 models = evaluate(noisy_data.tolist())
 
 # Plot the tree diagram
-# createPlot(models[0])
+#createPlot(models[0])
 
 # Prune on first model
 start_index = int(len(noisy_data) * 0.1)
@@ -407,8 +424,8 @@ test_data = noisy_data[:start_index]
 print('Max depth of original tree= %d' % get_tree_depth(models[0]))
 print('Start pruning on first model')
 pruned_tree = prune(models[0], test_data, models[0])
-accuracy, tp, fp, fn = test_over_model(pruned_tree, test_data)
-print('New accuracy after prune %f' % accuracy)
+class_rate = test_over_model(pruned_tree, test_data)
+print('New accuracy after prune %f' % class_rate)
 print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
 
 print('$$$$$')
