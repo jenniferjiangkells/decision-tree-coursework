@@ -135,8 +135,8 @@ def predict(data, model):
 
     return -1
 
-# Evaluate accuracy of model
-def test_over_model(tree_model, test_data):
+# Evaluate accuracy(classification rate) of the input model.
+def evaluate(tree_model, test_data):
     actual_labels=[]
     predicted_labels = []
 
@@ -156,7 +156,12 @@ def test_over_model(tree_model, test_data):
 ##################################################
 
 # Evaluate accuracy, precision, recall and F1 score of dataset
-def evaluate(dataset):
+# This cross validation function takes in dataset, and essentially divide the dataset into ten folds to perform the
+# cross validation. This function will return an array of ten models at the end. These ten models are basically produced
+# from ten different training dataset. If Pruned_or_Raw is 1, then these ten models will be each be pruned during the process,
+# and the corresponding stats are calculated for the pruned model. It will also return an array of pruned models.
+
+def cross_validation(dataset, Pruned_or_Raw):
     #shuffle the data first
     random.shuffle(dataset)
 
@@ -180,6 +185,11 @@ def evaluate(dataset):
         training_data.extend(dataset[end:])
 
         model, depth = decision_tree_training(training_data)
+
+        #if we are evaluating pruned model
+        if(Pruned_or_Raw == 1):
+            model = prune(model, validation_data, model)
+
         models_array.append(model)
 
         for data in validation_data:
@@ -204,6 +214,7 @@ def evaluate(dataset):
     print("Average classification rate: \n", class_rate_sum/10)
 
     return models_array
+
 
 def get_stats(actual_labels, predicted_labels):
     cmat_sum = np.zeros((4,4))
@@ -338,11 +349,11 @@ def createPlot(myTree):
 #Pruning
 ##################################################
 
-# Next we do pruning on first trained tree
+# Next we do pruning on trained tree
 def prune(decision_tree, test_data, root):
 	if decision_tree is None:
 		return decision_tree
-	accuracy = test_over_model(root, test_data)
+	accuracy = evaluate(root, test_data)
 
 	if decision_tree['left'] is None or decision_tree['right'] is None:
 		return
@@ -377,7 +388,7 @@ def prune(decision_tree, test_data, root):
 	decision_tree['left'] = left_pruned
 	decision_tree['right'] = right_pruned
 
-	new_accuracy = test_over_model(root, test_data)
+	new_accuracy = evaluate(root, test_data)
 
 	# If got better result, apply the changes
 	if new_accuracy >= accuracy:
@@ -391,41 +402,70 @@ def prune(decision_tree, test_data, root):
 
 
 # Evaluate on cleaned data
-models = evaluate(clean_data.tolist())
+#models = evaluate(clean_data.tolist())
 
 # Plot the diagram
 # createPlot(models[0])
 
-# Prune on first model
 start_index = int(len(clean_data) * 0.1)
-test_data = clean_data[:start_index]
+test_data = clean_data[:start_index]     #test data for final use
 
-print('Max depth of original tree= %d' % get_tree_depth(models[0]))
-print('Start pruning on first model')
-pruned_tree = prune(models[0], test_data, models[0])
-class_rate = test_over_model(pruned_tree, test_data)
-print('New accuracy after prune %f' % class_rate)
-print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
+training_data = clean_data[start_index:]
+raw_models = cross_validation(training_data.tolist(), 0)
+
+raw_model_classification = []
+pruned_model_classification = []
+
+for i in range(len(raw_models)):
+    class_rate = evaluate(raw_models[i], test_data)
+    raw_model_classification.append(class_rate)
+print('classification rate for ten raw models are: ')
+print(raw_model_classification)
+
+pruned_models = cross_validation(training_data.tolist(), 1)
+for i in range(len(pruned_models)):
+    class_rate = evaluate(pruned_models[i], test_data)
+    pruned_model_classification.append(class_rate)
+print('classification rate for ten pruned models are: ')
+print(pruned_model_classification)
+
+
+#raw_models = evaluate(training_data.tolist())  #this raw models array contains 10 raw models from the training data
+# for i in range(len(raw_models)):
+#     class_rate = test_over_model(raw_models[i], validation_data)
+#     print("classification rate for model %d is %d" % (i, class_rate))
+#
+# for i in range(len(raw_models)):
+#     pruned_model = prune(raw_models[i], validation_data, raw_models[i]) #this gives the corresponding pruned model for the raw model
+#     class_rate = test_over_model(pruned_model, validation_data) #class rate for the corresponding pruned model
+#     print("classification rate for pruned model %d is %d" % (i, class_rate))
+
+# print('Max depth of original tree= %d' % get_tree_depth(models[0]))
+# print('Start pruning on first model')
+# pruned_tree = prune(models[0], validation_data, models[0])
+# class_rate = test_over_model(pruned_tree, validation_data)
+# print('New accuracy after prune %f' % class_rate)
+# print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
 
 print('\n\n')
 
 
-# Evaluate on noisy data
-print('Evaluate on noisy dataset')
-models = evaluate(noisy_data.tolist())
-
-# Plot the tree diagram
-#createPlot(models[0])
-
-# Prune on first model
-start_index = int(len(noisy_data) * 0.1)
-test_data = noisy_data[:start_index]
-
-print('Max depth of original tree= %d' % get_tree_depth(models[0]))
-print('Start pruning on first model')
-pruned_tree = prune(models[0], test_data, models[0])
-class_rate = test_over_model(pruned_tree, test_data)
-print('New accuracy after prune %f' % class_rate)
-print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
+# # Evaluate on noisy data
+# print('Evaluate on noisy dataset')
+# models = evaluate(noisy_data.tolist())
+#
+# # Plot the tree diagram
+# #createPlot(models[0])
+#
+# # Prune on first model
+# start_index = int(len(noisy_data) * 0.1)
+# test_data = noisy_data[:start_index]
+#
+# print('Max depth of original tree= %d' % get_tree_depth(models[0]))
+# print('Start pruning on first model')
+# pruned_tree = prune(models[0], test_data, models[0])
+# class_rate = test_over_model(pruned_tree, test_data)
+# print('New accuracy after prune %f' % class_rate)
+# print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
 
 print('$$$$$')
