@@ -17,21 +17,21 @@ noisy_data = np.loadtxt("./wifi_db/noisy_dataset.txt")
 # Func to calculate entropy of dataset
 def get_entropy(dataset):
     total = len(dataset)
-    count_dict = {}
+    label_dict = {}   #labels and counts will be stored in this dictionary
 
     for data in dataset:
         label = int(data[-1])
-        count_dict[label] = count_dict.get(label, 0) + 1
+        label_dict[label] = label_dict.get(label, 0) + 1
 
     entropy = 0
     # print(count_dict)
-    for label, count in count_dict.items():
+    for label, count in label_dict.items():
         p = count / total
         entropy = entropy + p * math.log(p, 2)
     return -entropy
 
 
-# Func to calculate entropy after splitting
+# This function calculates the entropy after splitting
 def remainder_entropy(ldata, rdata):
     left_entropy = get_entropy(ldata)
     right_entropy = get_entropy(rdata)
@@ -44,8 +44,8 @@ def remainder_entropy(ldata, rdata):
 # Find best split point
 def find_split(training_data):
     if len(training_data) == 0:
-        return 0, 0, [], []
-    attributes_length = len(training_data[0]) - 1
+        return 0, 0, [], []       #returns a tuple of attribute, splitting value, left_data and right_data
+    attributes_length = len(training_data[0]) - 1   #returns number of attributes in the data
     best_information_gain = 0
     best_split = (0, 0, [], [])
 
@@ -60,7 +60,6 @@ def find_split(training_data):
         values = []
         for value in sorted_data:
             values.append(value[attribute_index])
-        #values = [value[attribute_index]for value in sorted_data]
 
         for value in values:
             value = int(value)
@@ -69,7 +68,7 @@ def find_split(training_data):
             value_set.add(value)
 
             # Assume split the data by the value, calculate the information gain
-            # Split data by data > value as right, otherwise left
+            # Split data > value as right, otherwise left
             ldata = []
             rdata = []
             for data in sorted_data:
@@ -90,6 +89,7 @@ def find_split(training_data):
     return best_split
 
 np.random.seed(0)
+
 
 # Train the decision tree model
 def decision_tree_training(training_data, depth=0):
@@ -119,6 +119,7 @@ def decision_tree_training(training_data, depth=0):
     root_node['right'] = rnode
 
     return root_node, max(ldepth, rdepth)
+
 
 def predict(data, model):
     tree = model
@@ -166,6 +167,7 @@ def cross_validation(dataset, Pruned_or_Raw):
     random.shuffle(dataset)
 
     models_array = []
+    depth_array = []
 
     cmat_sum = np.zeros((4,4))
     precision_sum = np.zeros((4))
@@ -185,6 +187,7 @@ def cross_validation(dataset, Pruned_or_Raw):
         training_data.extend(dataset[end:])
 
         model, depth = decision_tree_training(training_data)
+        depth_array.append(depth)
 
         #if we are evaluating pruned model
         if(Pruned_or_Raw == 1):
@@ -212,6 +215,10 @@ def cross_validation(dataset, Pruned_or_Raw):
     print("Average recall rate: \n", recall_sum/10)
     print("Average F1 measure: \n", f1_sum/10)
     print("Average classification rate: \n", class_rate_sum/10)
+    if Pruned_or_Raw == 1:
+        print("Depth of the ten pruned trees are: ", depth_array)
+    else:
+        print("Depth of the ten unpruned trees are: ", depth_array)
 
     return models_array
 
