@@ -392,17 +392,16 @@ def prune(decision_tree, test_data, root):
 
 	# If got better result, apply the changes
 	if new_accuracy >= accuracy:
-		print('New accuracy %f old accuracy: %f' % (new_accuracy, accuracy))
+		# print('New accuracy %f old accuracy: %f' % (new_accuracy, accuracy))
 		return decision_tree
 	else:
-		print('Worse accuracy %f old accuracy %f' % (new_accuracy, accuracy))
+		# print('Worse accuracy %f old accuracy %f' % (new_accuracy, accuracy))
 		decision_tree['left'] = left_tmp
 		decision_tree['right'] = right_tmp
 		return decision_tree
 
 
 # Evaluate on cleaned data
-#models = evaluate(clean_data.tolist())
 
 # Plot the diagram
 # createPlot(models[0])
@@ -413,6 +412,42 @@ test_data = clean_data[:start_index]     #test data for final use
 training_data = clean_data[start_index:]
 raw_models = cross_validation(training_data.tolist(), 0)
 
+# these two arrays will show the classification rates
+# for each of the ten models
+raw_model_classification = []
+pruned_model_classification = []
+
+for i in range(len(raw_models)):
+    class_rate = evaluate(raw_models[i], test_data)
+    raw_model_classification.append(class_rate)
+print('classification rate for ten raw models are: ')
+print(raw_model_classification)
+
+pruned_models = cross_validation(training_data.tolist(), 1)
+for i in range(len(pruned_models)):
+    class_rate = evaluate(pruned_models[i], test_data)
+    pruned_model_classification.append(class_rate)
+print('classification rate for ten pruned models are: ')
+print(pruned_model_classification)
+
+print('\n\n')
+
+
+# Evaluate on noisy data
+print('Evaluate on noisy dataset')
+#models = evaluate(noisy_data.tolist())
+
+# Plot the tree diagram
+#createPlot(models[0])
+
+start_index = int(len(noisy_data) * 0.1)
+test_data = noisy_data[:start_index]
+
+training_data = noisy_data[start_index:]
+raw_models = cross_validation(training_data.tolist(), 0)
+
+# these two arrays will show the classification rates
+# for each of the ten models
 raw_model_classification = []
 pruned_model_classification = []
 
@@ -430,37 +465,6 @@ print('classification rate for ten pruned models are: ')
 print(pruned_model_classification)
 
 
-#raw_models = evaluate(training_data.tolist())  #this raw models array contains 10 raw models from the training data
-# for i in range(len(raw_models)):
-#     class_rate = test_over_model(raw_models[i], validation_data)
-#     print("classification rate for model %d is %d" % (i, class_rate))
-#
-# for i in range(len(raw_models)):
-#     pruned_model = prune(raw_models[i], validation_data, raw_models[i]) #this gives the corresponding pruned model for the raw model
-#     class_rate = test_over_model(pruned_model, validation_data) #class rate for the corresponding pruned model
-#     print("classification rate for pruned model %d is %d" % (i, class_rate))
-
-# print('Max depth of original tree= %d' % get_tree_depth(models[0]))
-# print('Start pruning on first model')
-# pruned_tree = prune(models[0], validation_data, models[0])
-# class_rate = test_over_model(pruned_tree, validation_data)
-# print('New accuracy after prune %f' % class_rate)
-# print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
-
-print('\n\n')
-
-
-# # Evaluate on noisy data
-# print('Evaluate on noisy dataset')
-# models = evaluate(noisy_data.tolist())
-#
-# # Plot the tree diagram
-# #createPlot(models[0])
-#
-# # Prune on first model
-# start_index = int(len(noisy_data) * 0.1)
-# test_data = noisy_data[:start_index]
-#
 # print('Max depth of original tree= %d' % get_tree_depth(models[0]))
 # print('Start pruning on first model')
 # pruned_tree = prune(models[0], test_data, models[0])
