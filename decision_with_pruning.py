@@ -164,8 +164,7 @@ def evaluate(tree_model, test_data):
 
 def cross_validation(dataset, Pruned_or_Raw):
     #shuffle the data first
-    random.shuffle(dataset)
-
+    #random.shuffle(dataset)
     models_array = []
     depth_array = []
 
@@ -412,6 +411,7 @@ def prune(decision_tree, test_data, root):
 
 # Plot the diagram
 # createPlot(models[0])
+np.random.shuffle(clean_data)
 
 start_index = int(len(clean_data) * 0.1)
 test_data = clean_data[:start_index]     #test data for final use
@@ -446,7 +446,7 @@ print('Evaluate on noisy dataset')
 
 # Plot the tree diagram
 #createPlot(models[0])
-
+np.random.shuffle(noisy_data)
 start_index = int(len(noisy_data) * 0.1)
 test_data = noisy_data[:start_index]
 
@@ -470,13 +470,5 @@ for i in range(len(pruned_models)):
     pruned_model_classification.append(class_rate)
 print('classification rate for ten pruned models are: ')
 print(pruned_model_classification)
-
-
-# print('Max depth of original tree= %d' % get_tree_depth(models[0]))
-# print('Start pruning on first model')
-# pruned_tree = prune(models[0], test_data, models[0])
-# class_rate = test_over_model(pruned_tree, test_data)
-# print('New accuracy after prune %f' % class_rate)
-# print('Max depth of pruned tree= %d' % get_tree_depth(pruned_tree))
 
 print('$$$$$')
