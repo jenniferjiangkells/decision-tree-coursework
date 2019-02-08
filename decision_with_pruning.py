@@ -16,141 +16,141 @@ noisy_data = np.loadtxt("./wifi_db/noisy_dataset.txt")
 
 # Func to calculate entropy of dataset
 def get_entropy(dataset):
-    total = len(dataset)
-    label_dict = {}   #labels and counts will be stored in this dictionary
+	total = len(dataset)
+	label_dict = {}   #labels and counts will be stored in this dictionary
 
-    for data in dataset:
-        label = int(data[-1])
-        label_dict[label] = label_dict.get(label, 0) + 1
+	for data in dataset:
+		label = int(data[-1])
+		label_dict[label] = label_dict.get(label, 0) + 1
 
-    entropy = 0
-    # print(count_dict)
-    for label, count in label_dict.items():
-        p = count / total
-        entropy = entropy + p * math.log(p, 2)
-    return -entropy
+	entropy = 0
+	# print(count_dict)
+	for label, count in label_dict.items():
+		p = count / total
+		entropy = entropy + p * math.log(p, 2)
+	return -entropy
 
 
 # This function calculates the entropy after splitting
 def remainder_entropy(ldata, rdata):
-    left_entropy = get_entropy(ldata)
-    right_entropy = get_entropy(rdata)
+	left_entropy = get_entropy(ldata)
+	right_entropy = get_entropy(rdata)
 
-    left_size = len(ldata)
-    right_size = len(rdata)
+	left_size = len(ldata)
+	right_size = len(rdata)
 
-    return (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size)
+	return (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size)
 
 # Find best split point
 def find_split(training_data):
-    if len(training_data) == 0:
-        return 0, 0, [], []       #returns a tuple of attribute, splitting value, left_data and right_data
-    attributes_length = len(training_data[0]) - 1   #returns number of attributes in the data
-    best_information_gain = 0
-    best_split = (0, 0, [], [])
+	if len(training_data) == 0:
+		return 0, 0, [], []       #returns a tuple of attribute, splitting value, left_data and right_data
+	attributes_length = len(training_data[0]) - 1   #returns number of attributes in the data
+	best_information_gain = 0
+	best_split = (0, 0, [], [])
 
-    base_entropy = get_entropy(training_data)
+	base_entropy = get_entropy(training_data)
 
-    for attribute_index in range(attributes_length):
-        # sort the data based on each attribute
-        sorted_data = sorted(training_data, key=lambda x : x[attribute_index])
+	for attribute_index in range(attributes_length):
+		# sort the data based on each attribute
+		sorted_data = sorted(training_data, key=lambda x : x[attribute_index])
 
-        # find the best value of the attribute that splits label
-        value_set = set()
-        values = []
-        for value in sorted_data:
-            values.append(value[attribute_index])
+		# find the best value of the attribute that splits label
+		value_set = set()
+		values = []
+		for value in sorted_data:
+			values.append(value[attribute_index])
 
-        for value in values:
-            value = int(value)
-            if value in value_set:
-                continue
-            value_set.add(value)
+		for value in values:
+			value = int(value)
+			if value in value_set:
+				continue
+			value_set.add(value)
 
-            # Assume split the data by the value, calculate the information gain
-            # Split data > value as right, otherwise left
-            ldata = []
-            rdata = []
-            for data in sorted_data:
-                if data[attribute_index] > value:
-                    rdata.append(data)
-                else:
-                    ldata.append(data)
+			# Assume split the data by the value, calculate the information gain
+			# Split data > value as right, otherwise left
+			ldata = []
+			rdata = []
+			for data in sorted_data:
+				if data[attribute_index] > value:
+					rdata.append(data)
+				else:
+					ldata.append(data)
 
 
-            remainder = remainder_entropy(ldata, rdata)
-            information_gain = base_entropy - remainder
+			remainder = remainder_entropy(ldata, rdata)
+			information_gain = base_entropy - remainder
 
-            # Replace with better information gain
-            if information_gain > best_information_gain:
-                best_information_gain = information_gain
-                best_split = (attribute_index, value, ldata, rdata)
+			# Replace with better information gain
+			if information_gain > best_information_gain:
+				best_information_gain = information_gain
+				best_split = (attribute_index, value, ldata, rdata)
 
-    return best_split
+	return best_split
 
 np.random.seed(0)
 
 
 # Train the decision tree model
 def decision_tree_training(training_data, depth=0):
-    if len(training_data) == 0:
-        return None, 0
+	if len(training_data) == 0:
+		return None, 0
 
-    first_label = int(training_data[0][-1])
-    all_same = True
+	first_label = int(training_data[0][-1])
+	all_same = True
 
-    for data in training_data:
-        label = int(data[-1])
-        if label != first_label:
-            all_same = False
+	for data in training_data:
+		label = int(data[-1])
+		if label != first_label:
+			all_same = False
 
-    if all_same:
-        # leaf node no care for attribute and value, since they all have same label
-        return {'attribute': 0, 'value': 0,'left': None, 'right': None, 'length': len(training_data), 'label': first_label}, depth
+	if all_same:
+		# leaf node no care for attribute and value, since they all have same label
+		return {'attribute': 0, 'value': 0,'left': None, 'right': None, 'length': len(training_data), 'label': first_label}, depth
 
-    # Find out the best split point
-    attribute, value, ldata, rdata = find_split(training_data)
-    root_node = {'attribute': attribute, 'value': value, 'length': len(training_data)}
+	# Find out the best split point
+	attribute, value, ldata, rdata = find_split(training_data)
+	root_node = {'attribute': attribute, 'value': value, 'length': len(training_data)}
 
-    # Recursively build left and right tree
-    lnode, ldepth = decision_tree_training(ldata, depth + 1)
-    rnode, rdepth = decision_tree_training(rdata, depth + 1)
-    root_node['left'] = lnode
-    root_node['right'] = rnode
+	# Recursively build left and right tree
+	lnode, ldepth = decision_tree_training(ldata, depth + 1)
+	rnode, rdepth = decision_tree_training(rdata, depth + 1)
+	root_node['left'] = lnode
+	root_node['right'] = rnode
 
-    return root_node, max(ldepth, rdepth)
+	return root_node, max(ldepth, rdepth)
 
 
 def predict(data, model):
-    tree = model
-    while True:
-        if tree['left'] is None and tree['right'] is None:
-            return tree['label']
-        attribute = tree['attribute']
-        value = tree['value']
+	tree = model
+	while True:
+		if tree['left'] is None and tree['right'] is None:
+			return tree['label']
+		attribute = tree['attribute']
+		value = tree['value']
 
-        if data[attribute] > value:
-            tree = tree['right']
-        else:
-            tree = tree['left']
+		if data[attribute] > value:
+			tree = tree['right']
+		else:
+			tree = tree['left']
 
-    return -1
+	return -1
 
 # Evaluate accuracy(classification rate) of the input model.
 def evaluate(tree_model, test_data):
-    actual_labels=[]
-    predicted_labels = []
+	actual_labels=[]
+	predicted_labels = []
 
-    for data in test_data:
-        label = int(data[-1])
-        predicted = predict(data, tree_model)
-        actual_labels.append(label)
-        predicted_labels.append(predicted)
+	for data in test_data:
+		label = int(data[-1])
+		predicted = predict(data, tree_model)
+		actual_labels.append(label)
+		predicted_labels.append(predicted)
 
-    cmat = get_confusion_matrix(actual_labels,predicted_labels)
-    class_rate = classification_rate(cmat)
+	cmat = get_confusion_matrix(actual_labels,predicted_labels)
+	class_rate = classification_rate(cmat)
 
-    return class_rate
+	return class_rate
 
 ##################################################
 #Evaluation
@@ -158,28 +158,55 @@ def evaluate(tree_model, test_data):
 
 #this function generates ten pruned models.
 def Inner_validation(dataset):
-    models_array = []
-    depth_array = []
+	models_array = []
+	depth_array = []
 
-    for i in range(10):
-        actual_labels=[]
-        predicted_labels = []
+	cmat_sum = np.zeros((4,4))
+	precision_sum = np.zeros((4))
+	recall_sum = np.zeros((4))
+	f1_sum = np.zeros((4))
+	class_rate_sum = 0
 
-        start = int(len(dataset) * i / 10)
-        end = int(len(dataset) * (i + 1) / 10)
-        validation_data = dataset[start:end]
+	for i in range(10):
+		actual_labels=[]
+		predicted_labels = []
 
-        training_data = dataset[:start]
-        training_data.extend(dataset[end:])
+		start = int(len(dataset) * i / 10)
+		end = int(len(dataset) * (i + 1) / 10)
+		validation_data = dataset[start:end]
 
-        model, depth = decision_tree_training(training_data)
-        depth_array.append(depth)
+		training_data = dataset[:start]
+		training_data.extend(dataset[end:])
 
-        # we pass in the validation_data into the prune function for pruning
-        pruned_model = prune(model, validation_data, model)
-        models_array.append(pruned_model)
+		model, depth = decision_tree_training(training_data)
+		depth_array.append(depth)
 
-    return models_array                           #return ten prunned models
+		# we pass in the validation_data into the prune function for pruning
+		pruned_model = prune(model, validation_data, model)
+		models_array.append(pruned_model)
+
+		for data in validation_data:
+			label = int(data[-1])
+			predicted = predict(data, pruned_model)
+			actual_labels.append(label)
+			predicted_labels.append(predicted)
+
+		cmat, precision, recall, f1, classification = get_stats(actual_labels, predicted_labels)
+		cmat_sum += cmat
+		precision_sum += precision
+		recall_sum += recall
+		f1_sum += f1
+		class_rate_sum += classification
+
+	avg_cm = cmat_sum/10
+	avg_precision = precision_sum/10
+	avg_recall = recall_sum/10
+	avg_f1 = f1_sum/10
+	avg_classification = class_rate_sum/10
+
+
+
+	return models_array, depth_array, avg_cm, avg_precision, avg_recall, avg_f1, avg_classification      #return ten prunned models
 
 
 # Evaluate accuracy, precision, recall and F1 score of dataset
@@ -191,119 +218,133 @@ def Inner_validation(dataset):
 # the inner_validation function, which returns ten pruned models.
 
 def cross_validation(dataset, Pruned_or_Raw):
-    models_array = []
-    depth_array = []
+	models_array = []
+	depth_array = []
 
-    cmat_sum = np.zeros((4,4))
-    precision_sum = np.zeros((4))
-    recall_sum = np.zeros((4))
-    f1_sum = np.zeros((4))
-    class_rate_sum = 0
+	cmat_sum = np.zeros((4,4))
+	precision_sum = np.zeros((4))
+	recall_sum = np.zeros((4))
+	f1_sum = np.zeros((4))
+	class_rate_sum = 0
 
-    for i in range(10):
-        actual_labels=[]
-        predicted_labels = []
+	pruned_cmat = np.zeros((4,4))
+	pruned_precision = np.zeros((4))
+	pruned_recall = np.zeros((4))
+	pruned_f1 = np.zeros((4))
+	pruned_class = 0
 
-        start = int(len(dataset) * i / 10)
-        end = int(len(dataset) * (i + 1) / 10)
-        test_data = dataset[start:end]
+	for i in range(10):
+		actual_labels=[]
+		predicted_labels = []
 
-        training_data = dataset[:start]
-        training_data.extend(dataset[end:])
+		start = int(len(dataset) * i / 10)
+		end = int(len(dataset) * (i + 1) / 10)
+		test_data = dataset[start:end]
 
-        # if we are evaluating pruned model. We get an array of ten pruned models from the Inner_validation. We want to
-        # get all the average stats for the 10*10 pruned models
-        if (Pruned_or_Raw == 1):
-            models_array = Inner_validation(training_data)
-            print(models_array)
-        else:
-            model, depth = decision_tree_training(training_data)
-            depth_array.append(depth)
+		training_data = dataset[:start]
+		training_data.extend(dataset[end:])
 
+		# if we are evaluating pruned model. We get an array of ten pruned models from the Inner_validation. We want to
+		# get all the average stats for the 10*10 pruned models
+		if (Pruned_or_Raw == 1):
+			models_array, depth_array, cmat, precision, recall, f1, classification = Inner_validation(training_data)
 
+			pruned_cmat += cmat
+			pruned_precision += precision
+			pruned_recall += recall
+			pruned_f1 += f1
+			pruned_class += classification
 
-    #     else:
-    #         models_array.append(model)
-    #         for data in test_data:
-    #             label = int(data[-1])
-    #             predicted = predict(data, model)
-    #             actual_labels.append(label)
-    #             predicted_labels.append(predicted)
-    #
-    #     cmat = get_confusion_matrix(actual_labels,predicted_labels)
-    #     precision = get_precision(cmat)
-    #     recall = get_recall(cmat)
-    #     cmat_sum += cmat
-    #     precision_sum += precision
-    #     recall_sum += recall
-    #     f1_sum += f1_measure(precision, recall)
-    #     class_rate_sum += classification_rate(cmat)
-    #
-    # print("Average confusion matrix:\n", cmat_sum/10)
-    # print("Average precision rate: \n", precision_sum/10)
-    # print("Average recall rate: \n", recall_sum/10)
-    # print("Average F1 measure: \n", f1_sum/10)
-    # print("Average classification rate: \n", class_rate_sum/10)
-    # if Pruned_or_Raw == 1:
-    #     print("Depth of the ten pruned trees are: ", depth_array)
-    # else:
-    #     print("Depth of the ten unpruned trees are: ", depth_array)
+			#print(models_array)
 
-    return models_array
+		else:
+			model, depth = decision_tree_training(training_data)
+			depth_array.append(depth)
+
+			models_array.append(model)
+
+			for data in test_data:
+				label = int(data[-1])
+				predicted = predict(data, model)
+				actual_labels.append(label)
+				predicted_labels.append(predicted)
+
+			cmat, precision, recall, f1, classification = get_stats(actual_labels, predicted_labels)
+			cmat_sum += cmat
+			precision_sum += precision
+			recall_sum += recall
+			f1_sum += f1
+			class_rate_sum += classification
+
+	if (Pruned_or_Raw == 1):
+		print("Average confusion matrix:\n", pruned_cmat/10)
+		print("Average precision rate: \n", pruned_precision/10)
+		print("Average recall rate: \n", pruned_recall/10)
+		print("Average F1 measure: \n", pruned_f1/10)
+		print("Average classification rate: \n", pruned_class/10)
+
+		print("Depth of the ten pruned trees are: ", depth_array)
+	else:
+
+		print("Average confusion matrix:\n", cmat_sum/10)
+		print("Average precision rate: \n", precision_sum/10)
+		print("Average recall rate: \n", recall_sum/10)
+		print("Average F1 measure: \n", f1_sum/10)
+		print("Average classification rate: \n", class_rate_sum/10)
+
+		print("Depth of the ten unpruned trees are: ", depth_array)
+
+	return models_array
+
 
 def get_stats(actual_labels, predicted_labels):
-    cmat_sum = np.zeros((4,4))
-    precision_sum = np.zeros((4))
-    recall_sum = np.zeros((4))
-    f1_sum = np.zeros((4))
-    class_rate_sum = 0
 
-    cmat = get_confusion_matrix(actual_labels,predicted_labels)
-    precision = get_precision(cmat)
-    recall = get_recall(cmat)
-    f1_rate = f1_measure(precision, recall)
-    class_rate = classification_rate(cmat)
+	cmat = get_confusion_matrix(actual_labels,predicted_labels)
+	precision = get_precision(cmat)
+	recall = get_recall(cmat)
+	f1_rate = f1_measure(precision, recall)
+	class_rate = classification_rate(cmat)
 
-    return cmat, precision, recall, f1_rate, class_rate
+	return cmat, precision, recall, f1_rate, class_rate
 
 
 def get_confusion_matrix(actual_labels, predicted_labels):
-    cmat = np.zeros((4,4))
-    for i in range(len(predicted_labels)):
-        cmat[actual_labels[i] -1, predicted_labels[i] -1] += 1
-    return cmat
+	cmat = np.zeros((4,4))
+	for i in range(len(predicted_labels)):
+		cmat[actual_labels[i] -1, predicted_labels[i] -1] += 1
+	return cmat
 
 def get_recall(confusion_matrix):
-    rate = np.zeros((4))
-    # compute the recall rate for each class
-    for i in range(4):
-        if sum(confusion_matrix[i, :]) == 0:
-            rate[i] = confusion_matrix[i, i] * 100
-        else:
-            rate[i] = confusion_matrix[i, i] / (sum(confusion_matrix[i, :])) *100
-    return rate
+	rate = np.zeros((4))
+	# compute the recall rate for each class
+	for i in range(4):
+		if sum(confusion_matrix[i, :]) == 0:
+			rate[i] = confusion_matrix[i, i] * 100
+		else:
+			rate[i] = confusion_matrix[i, i] / (sum(confusion_matrix[i, :])) *100
+	return rate
 
 def get_precision(confusion_matrix):
-    rate = np.zeros((4))
-    for i in range(4):
-        if sum(confusion_matrix[:, i]) == 0:
-            rate[i] = confusion_matrix[i, i] * 100
-        else:
-            rate[i] = confusion_matrix[i, i] * 100 / (sum(confusion_matrix[:, i]))
-    return rate
+	rate = np.zeros((4))
+	for i in range(4):
+		if sum(confusion_matrix[:, i]) == 0:
+			rate[i] = confusion_matrix[i, i] * 100
+		else:
+			rate[i] = confusion_matrix[i, i] * 100 / (sum(confusion_matrix[:, i]))
+	return rate
 
 def f1_measure(precision_rate, recall_rate):
-    rate = np.zeros((4))
-    for i in range(4):
-        if precision_rate[i] == 0 or recall_rate[i] == 0:
-            rate[i] = 0
-        else:
-            rate[i] = 2 * ((precision_rate[i]/100 * recall_rate[i]/100) / (precision_rate[i]/100 + recall_rate[i]/100))*100
-    return rate
+	rate = np.zeros((4))
+	for i in range(4):
+		if precision_rate[i] == 0 or recall_rate[i] == 0:
+			rate[i] = 0
+		else:
+			rate[i] = 2 * ((precision_rate[i]/100 * recall_rate[i]/100) / (precision_rate[i]/100 + recall_rate[i]/100))*100
+	return rate
 
 def classification_rate(confusion_matrix):
-    rate = sum(confusion_matrix.diagonal()) / confusion_matrix.sum()
-    return rate
+	rate = sum(confusion_matrix.diagonal()) / confusion_matrix.sum()
+	return rate
 
 
 ##################################################
@@ -328,12 +369,12 @@ def get_tree_width(tree):
 	return left, right
 
 def get_tree_depth(tree, depth=1):
-    if tree is None:
-        return depth
-    ldepth = get_tree_depth(tree['left'], depth + 1)
-    rdepth = get_tree_depth(tree['right'], depth + 1)
+	if tree is None:
+		return depth
+	ldepth = get_tree_depth(tree['left'], depth + 1)
+	rdepth = get_tree_depth(tree['right'], depth + 1)
 
-    return max(ldepth, rdepth)
+	return max(ldepth, rdepth)
 
 def plotNode(nodeTxt, centerPt, parentPt, nodeType, ax1):
 	plt.annotate(nodeTxt, xy=parentPt, xycoords='axes fraction',
@@ -468,38 +509,41 @@ pruned_models = cross_validation(clean_data.tolist(), 1)
 print('\n\n')
 
 
-# Evaluate on noisy data
-# print('Evaluate on noisy dataset')
-# #models = evaluate(noisy_data.tolist())
+#Evaluate on noisy data
+print('Evaluate on noisy dataset')
+#models = evaluate(noisy_data.tolist())
 #
 # # Plot the tree diagram
 # #createPlot(models[0])
 #
-# np.random.shuffle(noisy_data)
-# start_index = int(len(noisy_data) * 0.1)
-# test_data = noisy_data[:start_index]     #do 10 folds cross validation on this test.
-#
-# training_data = noisy_data[start_index:]
-# raw_models = cross_validation(training_data.tolist(), 0)
-#
-# # these two arrays will show the classification rates
-# # for each of the ten models
-# raw_model_classification = []
-# pruned_model_classification = []
-#
-# for i in range(len(raw_models)):
-#     class_rate = evaluate(raw_models[i], test_data)
-#     raw_model_classification.append(class_rate)
-# print('classification rate for ten raw models are: ')
+np.random.shuffle(noisy_data)
+start_index = int(len(noisy_data) * 0.1)
+test_data = noisy_data[:start_index]     #do 10 folds cross validation on this test.
+
+training_data = noisy_data[start_index:]
+raw_models = cross_validation(training_data.tolist(), 0)
+
+# these two arrays will show the classification rates
+# for each of the ten models
+raw_model_classification = []
+pruned_model_classification = []
+
+for i in range(len(raw_models)):
+	 class_rate = evaluate(raw_models[i], test_data)
+	 raw_model_classification.append(class_rate)
+ #print("classification rate for ten raw models are: ")
 # print(raw_model_classification)
-#
-# pruned_models = cross_validation(training_data.tolist(), 1)
-# for i in range(len(pruned_models)):
-#     class_rate = evaluate(pruned_models[i], test_data)
-#     pruned_model_classification.append(class_rate)
-# print('classification rate for ten pruned models are: ')
-# print(pruned_model_classification)
-#
+print(raw_model_classification)
+
+pruned_models = cross_validation(training_data.tolist(), 1)
+
+for i in range(len(pruned_models)):
+	class_rate = evaluate(pruned_models[i], test_data)
+	pruned_model_classification.append(class_rate)
+
+#print("classification rate for ten pruned models are: ")
+#print(pruned_model_classification)
+print(pruned_model_classification)
 # print('$$$$$')
 
 
