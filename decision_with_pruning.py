@@ -158,18 +158,29 @@ def evaluate(tree_model, test_data):
 
 #this function generates ten pruned models.
 def Inner_validation(dataset):
-	models_array = []
-	depth_array = []
+	pruned_models_array = []
+	pre_pruned_depth_array = []
+	pruned_depth_array = []
+	pruned_models = []
 
-	cmat_sum = np.zeros((4,4))
-	precision_sum = np.zeros((4))
-	recall_sum = np.zeros((4))
-	f1_sum = np.zeros((4))
-	class_rate_sum = 0
+	pre_pruned_cmat_sum = np.zeros((4,4))
+	pre_pruned_precision_sum = np.zeros((4))
+	pre_pruned_recall_sum = np.zeros((4))
+	pre_pruned_f1_sum = np.zeros((4))
+	pre_pruned_class_rate_sum = 0
+
+	pruned_cmat_sum = np.zeros((4, 4))
+	pruned_precision_sum = np.zeros((4))
+	pruned_recall_sum = np.zeros((4))
+	pruned_f1_sum = np.zeros((4))
+	pruned_class_rate_sum = 0
 
 	for i in range(10):
-		actual_labels=[]
-		predicted_labels = []
+		pre_pruned_actual_labels=[]
+		pre_pruned_predicted_labels = []
+
+		pruned_actual_labels = []
+		pruned_predicted_labels = []
 
 		start = int(len(dataset) * i / 10)
 		end = int(len(dataset) * (i + 1) / 10)
@@ -178,35 +189,61 @@ def Inner_validation(dataset):
 		training_data = dataset[:start]
 		training_data.extend(dataset[end:])
 
-		model, depth = decision_tree_training(training_data)
-		depth_array.append(depth)
+		# get the pre_pruned_model and their stats
+		pre_pruned_model, pre_pruned_depth = decision_tree_training(training_data)
+		pre_pruned_depth_array.append(pre_pruned_depth)
 
-		# we pass in the validation_data into the prune function for pruning
-		pruned_model = prune(model, validation_data, model)
-		models_array.append(pruned_model)
+		for data in validation_data:
+			label = int(data[-1])
+			predicted = predict(data, pre_pruned_model)
+			pre_pruned_actual_labels.append(label)
+			pre_pruned_predicted_labels.append(predicted)
+
+		pre_pruned_cmat, pre_pruned_precision, pre_pruned_recall, pre_pruned_f1, \
+		pre_pruned_classification = get_stats(pre_pruned_actual_labels, pre_pruned_predicted_labels)
+
+		pre_pruned_cmat_sum += pre_pruned_cmat
+		pre_pruned_precision_sum += pre_pruned_precision
+		pre_pruned_recall_sum += pre_pruned_recall
+		pre_pruned_f1_sum += pre_pruned_f1
+		pre_pruned_class_rate_sum += pre_pruned_classification
+
+		# get the corresponding pruned model and their stats
+		pruned_model = prune(pre_pruned_model, validation_data, pre_pruned_model)
+		pruned_models.append(pruned_model)
+		# pruned_depth_array.append(pruned_depth)
 
 		for data in validation_data:
 			label = int(data[-1])
 			predicted = predict(data, pruned_model)
-			actual_labels.append(label)
-			predicted_labels.append(predicted)
+			pruned_actual_labels.append(label)
+			pruned_predicted_labels.append(predicted)
 
-		cmat, precision, recall, f1, classification = get_stats(actual_labels, predicted_labels)
-		cmat_sum += cmat
-		precision_sum += precision
-		recall_sum += recall
-		f1_sum += f1
-		class_rate_sum += classification
+		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
+		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
 
-	avg_cm = cmat_sum/10
-	avg_precision = precision_sum/10
-	avg_recall = recall_sum/10
-	avg_f1 = f1_sum/10
-	avg_classification = class_rate_sum/10
+		pruned_cmat_sum += pruned_cmat
+		pruned_precision_sum += pruned_precision
+		pruned_recall_sum += pruned_recall
+		pruned_f1_sum += pruned_f1
+		pruned_class_rate_sum += pruned_classification
 
+	print("Average pre_pruned confusion matrix:\n", pre_pruned_cmat_sum / 10)
+	print("Average pre_pruned precision rate: \n", pre_pruned_precision_sum / 10)
+	print("Average pre_pruned recall rate: \n", pre_pruned_recall_sum / 10)
+	print("Average pre_pruned F1 measure: \n", pre_pruned_f1_sum / 10)
+	print("Average pre_pruned classification rate: \n", pre_pruned_class_rate_sum / 10)
+	print("Average depth of the ten pre_pruned trees are: ", np.average(pre_pruned_depth_array))
+	print("\n")
+	print("Average pruned confusion matrix:\n", pruned_cmat_sum / 10)
+	print("Average pruned precision rate: \n", pruned_precision_sum / 10)
+	print("Average pruned recall rate: \n", pruned_recall_sum / 10)
+	print("Average pruned F1 measure: \n", pruned_f1_sum / 10)
+	print("Average pruned classification rate: \n", pruned_class_rate_sum / 10)
+	print("\n")
+	# print("Average depth of the ten pruned trees are: ", np.average(pruned_depth_array))
 
-
-	return models_array, depth_array, avg_cm, avg_precision, avg_recall, avg_f1, avg_classification      #return ten prunned models
+	return pruned_models
 
 
 # Evaluate accuracy, precision, recall and F1 score of dataset
@@ -217,84 +254,25 @@ def Inner_validation(dataset):
 # dataset(there will be 10 different training datasets), we will run another 10 fold cv on it by passing the training dataset into
 # the inner_validation function, which returns ten pruned models.
 
-def cross_validation(dataset, Pruned_or_Raw):
+def cross_validation(training_data, test_data):
 	models_array = []
 	depth_array = []
 
-	cmat_sum = np.zeros((4,4))
-	precision_sum = np.zeros((4))
-	recall_sum = np.zeros((4))
-	f1_sum = np.zeros((4))
-	class_rate_sum = 0
+	predicted_labels = []
+	actual_labels = []
 
-	pruned_cmat = np.zeros((4,4))
-	pruned_precision = np.zeros((4))
-	pruned_recall = np.zeros((4))
-	pruned_f1 = np.zeros((4))
-	pruned_class = 0
+	final_raw_model, final_raw_depth = decision_tree_training(training_data)
 
-	for i in range(10):
-		actual_labels=[]
-		predicted_labels = []
+	for data in test_data:
+		actual_label = int(data[-1])
+		predicted = predict(data, final_raw_model)
+		actual_labels.append(actual_label)
+		predicted_labels.append(predicted)
 
-		start = int(len(dataset) * i / 10)
-		end = int(len(dataset) * (i + 1) / 10)
-		test_data = dataset[start:end]
+	final_raw_cmat, final_raw_precision, final_raw_recall, final_raw_f1, \
+	final_raw_classification = get_stats(actual_labels, predicted_labels)
 
-		training_data = dataset[:start]
-		training_data.extend(dataset[end:])
-
-		# if we are evaluating pruned model. We get an array of ten pruned models from the Inner_validation. We want to
-		# get all the average stats for the 10*10 pruned models
-		if (Pruned_or_Raw == 1):
-			models_array, depth_array, cmat, precision, recall, f1, classification = Inner_validation(training_data)
-
-			pruned_cmat += cmat
-			pruned_precision += precision
-			pruned_recall += recall
-			pruned_f1 += f1
-			pruned_class += classification
-
-			#print(models_array)
-
-		else:
-			model, depth = decision_tree_training(training_data)
-			depth_array.append(depth)
-
-			models_array.append(model)
-
-			for data in test_data:
-				label = int(data[-1])
-				predicted = predict(data, model)
-				actual_labels.append(label)
-				predicted_labels.append(predicted)
-
-			cmat, precision, recall, f1, classification = get_stats(actual_labels, predicted_labels)
-			cmat_sum += cmat
-			precision_sum += precision
-			recall_sum += recall
-			f1_sum += f1
-			class_rate_sum += classification
-
-	if (Pruned_or_Raw == 1):
-		print("Average confusion matrix:\n", pruned_cmat/10)
-		print("Average precision rate: \n", pruned_precision/10)
-		print("Average recall rate: \n", pruned_recall/10)
-		print("Average F1 measure: \n", pruned_f1/10)
-		print("Average classification rate: \n", pruned_class/10)
-
-		print("Depth of the ten pruned trees are: ", depth_array)
-	else:
-
-		print("Average confusion matrix:\n", cmat_sum/10)
-		print("Average precision rate: \n", precision_sum/10)
-		print("Average recall rate: \n", recall_sum/10)
-		print("Average F1 measure: \n", f1_sum/10)
-		print("Average classification rate: \n", class_rate_sum/10)
-
-		print("Depth of the ten unpruned trees are: ", depth_array)
-
-	return models_array
+	return final_raw_cmat, final_raw_precision, final_raw_recall, final_raw_f1, final_raw_classification, final_raw_depth
 
 
 def get_stats(actual_labels, predicted_labels):
@@ -477,34 +455,82 @@ def prune(decision_tree, test_data, root):      #the inner cross validation is j
 		return decision_tree
 
 
+
+
 # Evaluate on cleaned data
 print("Evaluate on cleaned data")
-# Plot the diagram
-# createPlot(models[0])
+
 np.random.shuffle(clean_data)
-print("cross validation on raw models")
-raw_models = cross_validation(clean_data.tolist(), 0)
+
+final_raw_depth_array = []
+pruned_depth_array = []
+
+final_raw_cmat_sum = np.zeros((4, 4))
+final_raw_precision_sum = np.zeros((4))
+final_raw_recall_sum = np.zeros((4))
+final_raw_f1_sum = np.zeros((4))
+final_raw_class_rate_sum = 0
+
+pruned_cmat_sum = np.zeros((4, 4))
+pruned_precision_sum = np.zeros((4))
+pruned_recall_sum = np.zeros((4))
+pruned_f1_sum = np.zeros((4))
+pruned_class_rate_sum = 0
+
+for i in range(10):
+	pruned_actual_labels = []
+	pruned_predicted_labels = []
+
+	start = int(len(clean_data) * i / 10)
+	end = int(len(clean_data) * (i + 1) / 10)
+	test_data = clean_data[start:end]
+
+	training_data1 = clean_data[:start]
+	training_data2 = clean_data[end:]
+	training_data = np.concatenate([training_data1, training_data2])
+
+	final_raw_cmat, final_raw_precision, final_raw_recall, final_raw_f1, \
+	final_raw_classification, final_raw_depth = cross_validation(training_data, test_data)
+
+	final_raw_depth_array.append(final_raw_depth)
+
+	final_raw_cmat_sum += final_raw_cmat
+	final_raw_precision_sum += final_raw_precision
+	final_raw_recall_sum += final_raw_recall
+	final_raw_f1_sum += final_raw_f1
+	final_raw_class_rate_sum += final_raw_classification
+
+	pruned_models = Inner_validation(training_data.tolist())
+
+	for i in range(len(pruned_models)):
+		for data in test_data:
+			label = int(data[-1])
+			predicted = predict(data, pruned_models[i])
+			pruned_actual_labels.append(label)
+			pruned_predicted_labels.append(predicted)
+
+		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
+		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
+
+		pruned_cmat_sum += pruned_cmat
+		pruned_precision_sum += pruned_precision
+		pruned_recall_sum += pruned_recall
+		pruned_f1_sum += pruned_f1
+		pruned_class_rate_sum += pruned_classification
+
+print("Average final raw confusion matrix:\n", final_raw_cmat_sum / 10)
+print("Average final raw precision rate: \n", final_raw_precision_sum / 10)
+print("Average final raw recall rate: \n", final_raw_recall_sum / 10)
+print("Average final raw F1 measure: \n", final_raw_f1_sum / 10)
+print("Average final raw classification rate: \n", final_raw_class_rate_sum / 10)
+print("Average depth of the ten final raw trees are: ", np.average(final_raw_depth_array))
 print("\n")
-print("cross validation on pruned models")
-pruned_models = cross_validation(clean_data.tolist(), 1)
-
-# these two arrays will show the classification rates
-# for each of the ten models
-# raw_model_classification = []
-# pruned_model_classification = []
-
-# for i in range(len(raw_models)):
-#     class_rate = evaluate(raw_models[i], test_data)
-#     raw_model_classification.append(class_rate)
-# print('classification rate for ten raw models are: ')
-# print(raw_model_classification)
-#
-# pruned_models = cross_validation(training_data.tolist(), 1)
-# for i in range(len(pruned_models)):
-#     class_rate = evaluate(pruned_models[i], test_data)
-#     pruned_model_classification.append(class_rate)
-# print('classification rate for ten pruned models are: ')
-# print(pruned_model_classification)
+print("Average pruned confusion matrix:\n", pruned_cmat_sum / 100)
+print("Average pruned precision rate: \n", pruned_precision_sum / 100)
+print("Average pruned recall rate: \n", pruned_recall_sum / 100)
+print("Average pruned F1 measure: \n", pruned_f1_sum / 100)
+print("Average pruned classification rate: \n", pruned_class_rate_sum / 100)
+# print("Average depth of the ten pruned trees are: ", np.average(final_raw_depth_array))
 
 print('\n\n')
 
@@ -512,38 +538,113 @@ print('\n\n')
 #Evaluate on noisy data
 print('Evaluate on noisy dataset')
 #models = evaluate(noisy_data.tolist())
-#
+
+np.random.shuffle(noisy_data)
+
+final_raw_depth_array = []
+pruned_depth_array = []
+
+final_raw_cmat_sum = np.zeros((4, 4))
+final_raw_precision_sum = np.zeros((4))
+final_raw_recall_sum = np.zeros((4))
+final_raw_f1_sum = np.zeros((4))
+final_raw_class_rate_sum = 0
+
+pruned_cmat_sum = np.zeros((4, 4))
+pruned_precision_sum = np.zeros((4))
+pruned_recall_sum = np.zeros((4))
+pruned_f1_sum = np.zeros((4))
+pruned_class_rate_sum = 0
+
+for i in range(10):
+	pruned_actual_labels = []
+	pruned_predicted_labels = []
+
+	start = int(len(noisy_data) * i / 10)
+	end = int(len(noisy_data) * (i + 1) / 10)
+	test_data = clean_data[start:end]
+
+	training_data1 = noisy_data[:start]
+	training_data2 = noisy_data[end:]
+	training_data = np.concatenate([training_data1, training_data2])
+
+	final_raw_cmat, final_raw_precision, final_raw_recall, final_raw_f1, \
+	final_raw_classification, final_raw_depth = cross_validation(training_data, test_data)
+
+	final_raw_depth_array.append(final_raw_depth)
+
+	final_raw_cmat_sum += final_raw_cmat
+	final_raw_precision_sum += final_raw_precision
+	final_raw_recall_sum += final_raw_recall
+	final_raw_f1_sum += final_raw_f1
+	final_raw_class_rate_sum += final_raw_classification
+
+	pruned_models = Inner_validation(training_data.tolist())
+
+	for i in range(len(pruned_models)):
+		for data in test_data:
+			label = int(data[-1])
+			predicted = predict(data, pruned_models[i])
+			pruned_actual_labels.append(label)
+			pruned_predicted_labels.append(predicted)
+
+		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
+		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
+
+		pruned_cmat_sum += pruned_cmat
+		pruned_precision_sum += pruned_precision
+		pruned_recall_sum += pruned_recall
+		pruned_f1_sum += pruned_f1
+		pruned_class_rate_sum += pruned_classification
+
+print("Average final raw confusion matrix:\n", final_raw_cmat_sum / 10)
+print("Average final raw precision rate: \n", final_raw_precision_sum / 10)
+print("Average final raw recall rate: \n", final_raw_recall_sum / 10)
+print("Average final raw F1 measure: \n", final_raw_f1_sum / 10)
+print("Average final raw classification rate: \n", final_raw_class_rate_sum / 10)
+print("Average depth of the ten final raw trees are: ", np.average(final_raw_depth_array))
+print("\n")
+print("Average pruned confusion matrix:\n", pruned_cmat_sum / 100)
+print("Average pruned precision rate: \n", pruned_precision_sum / 100)
+print("Average pruned recall rate: \n", pruned_recall_sum / 100)
+print("Average pruned F1 measure: \n", pruned_f1_sum / 100)
+print("Average pruned classification rate: \n", pruned_class_rate_sum / 100)
+# print("Average depth of the ten pruned trees are: ", np.average(final_raw_depth_array))
+
+print('\n\n')
+
 # # Plot the tree diagram
 # #createPlot(models[0])
 #
-np.random.shuffle(noisy_data)
-start_index = int(len(noisy_data) * 0.1)
-test_data = noisy_data[:start_index]     #do 10 folds cross validation on this test.
-
-training_data = noisy_data[start_index:]
-raw_models = cross_validation(training_data.tolist(), 0)
-
-# these two arrays will show the classification rates
-# for each of the ten models
-raw_model_classification = []
-pruned_model_classification = []
-
-for i in range(len(raw_models)):
-	 class_rate = evaluate(raw_models[i], test_data)
-	 raw_model_classification.append(class_rate)
- #print("classification rate for ten raw models are: ")
+# np.random.shuffle(noisy_data)
+#
+# start_index = int(len(noisy_data) * 0.1)
+# test_data = noisy_data[:start_index]     #do 10 folds cross validation on this test.
+#
+# training_data = noisy_data[start_index:]
+# raw_models = cross_validation(training_data.tolist(), 0)
+#
+# # these two arrays will show the classification rates
+# # for each of the ten models
+# raw_model_classification = []
+# pruned_model_classification = []
+#
+# for i in range(len(raw_models)):
+# 	 class_rate = evaluate(raw_models[i], test_data)
+# 	 raw_model_classification.append(class_rate)
+#  #print("classification rate for ten raw models are: ")
+# # print(raw_model_classification)
 # print(raw_model_classification)
-print(raw_model_classification)
-
-pruned_models = cross_validation(training_data.tolist(), 1)
-
-for i in range(len(pruned_models)):
-	class_rate = evaluate(pruned_models[i], test_data)
-	pruned_model_classification.append(class_rate)
-
-#print("classification rate for ten pruned models are: ")
-#print(pruned_model_classification)
-print(pruned_model_classification)
+#
+# pruned_models = cross_validation(training_data.tolist(), 1)
+#
+# for i in range(len(pruned_models)):
+# 	class_rate = evaluate(pruned_models[i], test_data)
+# 	pruned_model_classification.append(class_rate)
+#
+# #print("classification rate for ten pruned models are: ")
+# #print(pruned_model_classification)
+# print(pruned_model_classification)
 # print('$$$$$')
 
 
