@@ -163,17 +163,8 @@ def Inner_validation(dataset):
 	pruned_depth_array = []
 	pruned_models = []
 
-	pre_pruned_cmat_sum = np.zeros((4,4))
-	pre_pruned_precision_sum = np.zeros((4))
-	pre_pruned_recall_sum = np.zeros((4))
-	pre_pruned_f1_sum = np.zeros((4))
-	pre_pruned_class_rate_sum = 0
-
-	pruned_cmat_sum = np.zeros((4, 4))
-	pruned_precision_sum = np.zeros((4))
-	pruned_recall_sum = np.zeros((4))
-	pruned_f1_sum = np.zeros((4))
-	pruned_class_rate_sum = 0
+	pre_pruned_class_rate_array = []
+	pruned_class_rate_array = []
 
 	for i in range(10):
 		pre_pruned_actual_labels=[]
@@ -191,55 +182,21 @@ def Inner_validation(dataset):
 
 		# get the pre_pruned_model and their stats
 		pre_pruned_model, pre_pruned_depth = decision_tree_training(training_data)
+		pre_pruned_class_rate = evaluate(pre_pruned_model, validation_data)
+
+		pre_pruned_class_rate_array.append(pre_pruned_class_rate)
+
 		pre_pruned_depth_array.append(pre_pruned_depth)
-
-		for data in validation_data:
-			label = int(data[-1])
-			predicted = predict(data, pre_pruned_model)
-			pre_pruned_actual_labels.append(label)
-			pre_pruned_predicted_labels.append(predicted)
-
-		pre_pruned_cmat, pre_pruned_precision, pre_pruned_recall, pre_pruned_f1, \
-		pre_pruned_classification = get_stats(pre_pruned_actual_labels, pre_pruned_predicted_labels)
-
-		pre_pruned_cmat_sum += pre_pruned_cmat
-		pre_pruned_precision_sum += pre_pruned_precision
-		pre_pruned_recall_sum += pre_pruned_recall
-		pre_pruned_f1_sum += pre_pruned_f1
-		pre_pruned_class_rate_sum += pre_pruned_classification
 
 		# get the corresponding pruned model and their stats
 		pruned_model = prune(pre_pruned_model, validation_data, pre_pruned_model)
+
+		pruned_class_rate = evaluate(pruned_model, validation_data)
+		pruned_class_rate_array.append(pruned_class_rate)
 		pruned_models.append(pruned_model)
-		# pruned_depth_array.append(pruned_depth)
 
-		for data in validation_data:
-			label = int(data[-1])
-			predicted = predict(data, pruned_model)
-			pruned_actual_labels.append(label)
-			pruned_predicted_labels.append(predicted)
-
-		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
-		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
-
-		pruned_cmat_sum += pruned_cmat
-		pruned_precision_sum += pruned_precision
-		pruned_recall_sum += pruned_recall
-		pruned_f1_sum += pruned_f1
-		pruned_class_rate_sum += pruned_classification
-
-	print("Average pre_pruned confusion matrix:\n", pre_pruned_cmat_sum / 10)
-	print("Average pre_pruned precision rate: \n", pre_pruned_precision_sum / 10)
-	print("Average pre_pruned recall rate: \n", pre_pruned_recall_sum / 10)
-	print("Average pre_pruned F1 measure: \n", pre_pruned_f1_sum / 10)
-	print("Average pre_pruned classification rate: \n", pre_pruned_class_rate_sum / 10)
-	print("Average depth of the ten pre_pruned trees are: ", np.average(pre_pruned_depth_array))
-	print("\n")
-	print("Average pruned confusion matrix:\n", pruned_cmat_sum / 10)
-	print("Average pruned precision rate: \n", pruned_precision_sum / 10)
-	print("Average pruned recall rate: \n", pruned_recall_sum / 10)
-	print("Average pruned F1 measure: \n", pruned_f1_sum / 10)
-	print("Average pruned classification rate: \n", pruned_class_rate_sum / 10)
+	print("average pre_pruned class rate for 10 models in inner cv: \n", np.average(pre_pruned_class_rate_array))
+	print("average pruned class rate for 10 models in inner cv: \n", np.average(pruned_class_rate_array))
 	print("\n")
 	# print("Average depth of the ten pruned trees are: ", np.average(pruned_depth_array))
 
@@ -500,6 +457,8 @@ for i in range(10):
 	final_raw_f1_sum += final_raw_f1
 	final_raw_class_rate_sum += final_raw_classification
 
+	print("In fold ", i+1)
+
 	pruned_models = Inner_validation(training_data.tolist())
 
 	for i in range(len(pruned_models)):
@@ -578,6 +537,8 @@ for i in range(10):
 	final_raw_recall_sum += final_raw_recall
 	final_raw_f1_sum += final_raw_f1
 	final_raw_class_rate_sum += final_raw_classification
+
+	print("In fold ", i+1)
 
 	pruned_models = Inner_validation(training_data.tolist())
 
