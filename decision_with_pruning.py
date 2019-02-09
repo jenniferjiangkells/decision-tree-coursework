@@ -92,7 +92,7 @@ np.random.seed(0)
 
 
 # Train the decision tree model
-def decision_tree_training(training_data, depth=0):
+def decision_tree_training(training_data, depth=1):
 	if len(training_data) == 0:
 		return None, 0
 
@@ -181,7 +181,8 @@ def Inner_validation(dataset):
 		training_data.extend(dataset[end:])
 
 		# get the pre_pruned_model and their stats
-		pre_pruned_model, pre_pruned_depth = decision_tree_training(training_data)
+		pre_pruned_model, pre_pruned_depth = decision_tree_training(training_data, depth = 1)
+
 		pre_pruned_class_rate = evaluate(pre_pruned_model, validation_data)
 
 		pre_pruned_class_rate_array.append(pre_pruned_class_rate)
@@ -190,11 +191,16 @@ def Inner_validation(dataset):
 
 		# get the corresponding pruned model and their stats
 		pruned_model = prune(pre_pruned_model, validation_data, pre_pruned_model)
+		pruned_depth = get_tree_depth(pruned_model, depth = 1)
+
+		pruned_depth_array.append(pruned_depth)
 
 		pruned_class_rate = evaluate(pruned_model, validation_data)
 		pruned_class_rate_array.append(pruned_class_rate)
 		pruned_models.append(pruned_model)
 
+	print("average pre_pruned tree depth is: \n", pre_pruned_depth_array)
+	print("average pruned tree depth is: \n", pruned_depth_array)
 	print("average pre_pruned class rate for 10 models in inner cv: \n", np.average(pre_pruned_class_rate_array))
 	print("average pruned class rate for 10 models in inner cv: \n", np.average(pruned_class_rate_array))
 	print("\n")
@@ -230,7 +236,6 @@ def cross_validation(training_data, test_data):
 	final_raw_classification = get_stats(actual_labels, predicted_labels)
 
 	return final_raw_cmat, final_raw_precision, final_raw_recall, final_raw_f1, final_raw_classification, final_raw_depth
-
 
 def get_stats(actual_labels, predicted_labels):
 
@@ -305,6 +310,7 @@ def get_tree_width(tree):
 
 def get_tree_depth(tree, depth=1):
 	if tree is None:
+		depth = depth - 1
 		return depth
 	ldepth = get_tree_depth(tree['left'], depth + 1)
 	rdepth = get_tree_depth(tree['right'], depth + 1)
@@ -366,11 +372,11 @@ def prune(decision_tree, test_data, root):      #the inner cross validation is j
 		return decision_tree
 	accuracy = evaluate(root, test_data)
 
-	if decision_tree['left'] is None or decision_tree['right'] is None:
-		return
+	if decision_tree['left'] is None and decision_tree['right'] is None:
+		return decision_tree
 
 	# Can be pruned
-	if 'label' in decision_tree['left'] or 'label' in decision_tree['right']:
+	if 'label' in decision_tree['left'] and 'label' in decision_tree['right']:
 		count1 = decision_tree['left'].get('length', 0)
 		label1 = decision_tree['left'].get('label', 0)
 
