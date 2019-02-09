@@ -441,8 +441,6 @@ pruned_f1_sum = np.zeros((4))
 pruned_class_rate_sum = 0
 
 for i in range(10):
-	pruned_actual_labels = []
-	pruned_predicted_labels = []
 
 	start = int(len(clean_data) * i / 10)
 	end = int(len(clean_data) * (i + 1) / 10)
@@ -457,6 +455,10 @@ for i in range(10):
 
 	final_raw_depth_array.append(final_raw_depth)
 
+	# print("$$$$")
+	# print("raw cmat")
+	# print(final_raw_cmat)
+	# print("$$$$")
 	final_raw_cmat_sum += final_raw_cmat
 	final_raw_precision_sum += final_raw_precision
 	final_raw_recall_sum += final_raw_recall
@@ -467,7 +469,14 @@ for i in range(10):
 
 	pruned_models = Inner_validation(training_data.tolist())
 
+	# print("#####")
+	# print(len(pruned_models))
+	# print("####")
+
 	for i in range(len(pruned_models)):
+		pruned_actual_labels = []
+		pruned_predicted_labels = []
+
 		for data in test_data:
 			label = int(data[-1])
 			predicted = predict(data, pruned_models[i])
@@ -477,6 +486,10 @@ for i in range(10):
 		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
 		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
 
+		# print("####")
+		# print("pruned_cmat ")
+		# print(pruned_cmat)
+		# print("####")
 		pruned_cmat_sum += pruned_cmat
 		pruned_precision_sum += pruned_precision
 		pruned_recall_sum += pruned_recall
@@ -522,9 +535,6 @@ pruned_f1_sum = np.zeros((4))
 pruned_class_rate_sum = 0
 
 for i in range(10):
-	pruned_actual_labels = []
-	pruned_predicted_labels = []
-
 	start = int(len(noisy_data) * i / 10)
 	end = int(len(noisy_data) * (i + 1) / 10)
 	test_data = clean_data[start:end]
@@ -549,6 +559,8 @@ for i in range(10):
 	pruned_models = Inner_validation(training_data.tolist())
 
 	for i in range(len(pruned_models)):
+		pruned_actual_labels = []
+		pruned_predicted_labels = []
 		for data in test_data:
 			label = int(data[-1])
 			predicted = predict(data, pruned_models[i])
