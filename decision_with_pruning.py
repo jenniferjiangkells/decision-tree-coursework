@@ -455,10 +455,6 @@ for i in range(10):
 
 	final_raw_depth_array.append(final_raw_depth)
 
-	# print("$$$$")
-	# print("raw cmat")
-	# print(final_raw_cmat)
-	# print("$$$$")
 	final_raw_cmat_sum += final_raw_cmat
 	final_raw_precision_sum += final_raw_precision
 	final_raw_recall_sum += final_raw_recall
@@ -468,10 +464,7 @@ for i in range(10):
 	print("In fold ", i+1)
 
 	pruned_models = Inner_validation(training_data.tolist())
-
-	# print("#####")
-	# print(len(pruned_models))
-	# print("####")
+	#createPlot(pruned_models[0])
 
 	for i in range(len(pruned_models)):
 		pruned_actual_labels = []
@@ -486,10 +479,6 @@ for i in range(10):
 		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
 		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
 
-		# print("####")
-		# print("pruned_cmat ")
-		# print(pruned_cmat)
-		# print("####")
 		pruned_cmat_sum += pruned_cmat
 		pruned_precision_sum += pruned_precision
 		pruned_recall_sum += pruned_recall
