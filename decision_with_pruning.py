@@ -6,6 +6,14 @@ import matplotlib.pyplot as plt
 import time
 import copy
 
+#Import packages for plotting tree graph
+import matplotlib.pyplot as plt
+import matplotlib.path as mpath
+import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
+from matplotlib.collections import PatchCollection
+from collections import deque
+
 ##################################################
 #Decision Tree
 ##################################################
@@ -13,6 +21,7 @@ import copy
 #Loading the data
 clean_data = np.loadtxt("./wifi_db/clean_dataset.txt")
 noisy_data = np.loadtxt("./wifi_db/noisy_dataset.txt")
+
 
 # Func to calculate entropy of dataset
 def get_entropy(dataset):
@@ -24,7 +33,7 @@ def get_entropy(dataset):
 		label_dict[label] = label_dict.get(label, 0) + 1
 
 	entropy = 0
-	# print(count_dict)
+
 	for label, count in label_dict.items():
 		p = count / total
 		entropy = entropy + p * math.log(p, 2)
@@ -40,6 +49,7 @@ def remainder_entropy(ldata, rdata):
 	right_size = len(rdata)
 
 	return (left_size * left_entropy + right_size * right_entropy) / (left_size + right_size)
+
 
 # Find best split point
 def find_split(training_data):
@@ -90,7 +100,6 @@ def find_split(training_data):
 
 np.random.seed(0)
 
-
 # Train the decision tree model
 def decision_tree_training(training_data, depth=1):
 	if len(training_data) == 0:
@@ -136,6 +145,7 @@ def predict(data, model):
 
 	return -1
 
+
 # Evaluate accuracy(classification rate) of the input model.
 def evaluate(tree_model, test_data):
 	actual_labels=[]
@@ -152,9 +162,11 @@ def evaluate(tree_model, test_data):
 
 	return class_rate
 
+
 ##################################################
 #Evaluation
 ##################################################
+
 
 #this function generates ten pruned models.
 def Inner_validation(dataset):
@@ -237,6 +249,9 @@ def cross_validation(training_data, test_data):
 
 	return final_raw_cmat, final_raw_precision, final_raw_recall, final_raw_f1, final_raw_classification, final_raw_depth
 
+
+#helper functions to calculate stats and confusion matrix
+#########################################################
 def get_stats(actual_labels, predicted_labels):
 
 	cmat = get_confusion_matrix(actual_labels,predicted_labels)
@@ -249,42 +264,53 @@ def get_stats(actual_labels, predicted_labels):
 
 
 def get_confusion_matrix(actual_labels, predicted_labels):
+	#initialize confusion matrix
 	cmat = np.zeros((4,4))
+	#loops through data and counts number of actual-prediction occurences to create confusion matrix
 	for i in range(len(predicted_labels)):
 		cmat[actual_labels[i] -1, predicted_labels[i] -1] += 1
+
 	return cmat
 
+
 def get_recall(confusion_matrix):
-	rate = np.zeros((4))
-	# compute the recall rate for each class
+	recall = np.zeros((4))
+
+	# recall is TP of given class over TP+FP
 	for i in range(4):
 		if sum(confusion_matrix[i, :]) == 0:
-			rate[i] = confusion_matrix[i, i] * 100
+			recall[i] = confusion_matrix[i, i]
 		else:
-			rate[i] = confusion_matrix[i, i] / (sum(confusion_matrix[i, :])) *100
-	return rate
+			recall[i] = confusion_matrix[i, i] / (sum(confusion_matrix[i, :]))
+
+	return recall * 100
 
 def get_precision(confusion_matrix):
-	rate = np.zeros((4))
+	precision = np.zeros((4))
+
 	for i in range(4):
 		if sum(confusion_matrix[:, i]) == 0:
-			rate[i] = confusion_matrix[i, i] * 100
+			precision[i] = confusion_matrix[i, i]
 		else:
-			rate[i] = confusion_matrix[i, i] * 100 / (sum(confusion_matrix[:, i]))
-	return rate
+			precision[i] = confusion_matrix[i, i] / (sum(confusion_matrix[:, i]))
+
+	return precision * 100
+
 
 def f1_measure(precision_rate, recall_rate):
-	rate = np.zeros((4))
+	f1 = np.zeros((4))
+	#calculate the f1 measure for every class using precision and recall rates
 	for i in range(4):
-		if precision_rate[i] == 0 or recall_rate[i] == 0:
-			rate[i] = 0
-		else:
-			rate[i] = 2 * ((precision_rate[i]/100 * recall_rate[i]/100) / (precision_rate[i]/100 + recall_rate[i]/100))*100
-	return rate
+		f1[i] = 2 * ((precision_rate[i] * recall_rate[i]) / (precision_rate[i] + recall_rate[i]))
+
+	return f1
+
 
 def classification_rate(confusion_matrix):
-	rate = sum(confusion_matrix.diagonal()) / confusion_matrix.sum()
-	return rate
+	#the classification rate is the diagonal of the confusion matrix (TP+TN) over total
+	classification = sum(confusion_matrix.diagonal()) / confusion_matrix.sum()
+
+	return classification
 
 
 ##################################################
@@ -361,6 +387,49 @@ def createPlot(myTree):
 	plotTree(myTree, depth, (0.5, 1.0), 'root', ax1, params)
 
 	plt.show()
+
+##########################################
+#Use this plot function if the above doesn't run on Linux
+###########################################
+
+#fig, ax = plt.subplots(figsize=(18, 10))
+
+#tree, depth = decision_tree_training(clean_data)
+
+#gap = 1.0/depth
+
+#def plot_graph(root, xmin, xmax, ymin, ymax):
+#  queue = deque([(root, xmin, xmax, ymin, ymax)])
+#  while len(queue) > 0:
+#    q = queue.popleft()
+#    node = q[0]
+#    xmin = q[1]
+#    xmax = q[2]
+#    ymin = q[3]
+#    ymax = q[4]
+#    atri = node['attribute']
+#    val = node['value']
+#    text = '['+str(atri)+']:'+str(val)
+
+#    center = xmin+(xmax-xmin)/2.0
+#    d = (center-xmin)/2.0
+
+#    if node['left'] != None:
+#      queue.append((node['left'], xmin, center, ymin, ymax-gap))
+#      ax.annotate(text, xy=(center-d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
+
+#    if node['right'] != None:
+#      queue.append((node['right'], center, xmax, ymin, ymax-gap))
+#      ax.annotate(text, xy=(center+d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
+
+#    if node['left'] is None and node['right'] is None:
+#      an1 = ax.annotate(node['label'], xy=(center, ymax), xycoords="data", va="bottom", ha="center",
+#                        bbox=dict(boxstyle="round", fc="w"))
+
+#plot_graph(tree, 0.0, 1.0, 0.0, 1.0)
+
+#fig.subplots_adjust(top=0.83)
+#plt.show()
 
 ##################################################
 #Pruning
@@ -455,10 +524,6 @@ for i in range(10):
 
 	final_raw_depth_array.append(final_raw_depth)
 
-	# print("$$$$")
-	# print("raw cmat")
-	# print(final_raw_cmat)
-	# print("$$$$")
 	final_raw_cmat_sum += final_raw_cmat
 	final_raw_precision_sum += final_raw_precision
 	final_raw_recall_sum += final_raw_recall
@@ -469,9 +534,7 @@ for i in range(10):
 
 	pruned_models = Inner_validation(training_data.tolist())
 
-	# print("#####")
-	# print(len(pruned_models))
-	# print("####")
+	#createPlot(pruned_models[0])
 
 	for i in range(len(pruned_models)):
 		pruned_actual_labels = []
@@ -486,10 +549,6 @@ for i in range(10):
 		pruned_cmat, pruned_precision, pruned_recall, pruned_f1, \
 		pruned_classification = get_stats(pruned_actual_labels, pruned_predicted_labels)
 
-		# print("####")
-		# print("pruned_cmat ")
-		# print(pruned_cmat)
-		# print("####")
 		pruned_cmat_sum += pruned_cmat
 		pruned_precision_sum += pruned_precision
 		pruned_recall_sum += pruned_recall
@@ -515,7 +574,6 @@ print('\n\n')
 
 #Evaluate on noisy data
 print('Evaluate on noisy dataset')
-#models = evaluate(noisy_data.tolist())
 
 np.random.shuffle(noisy_data)
 
@@ -561,6 +619,7 @@ for i in range(10):
 	for i in range(len(pruned_models)):
 		pruned_actual_labels = []
 		pruned_predicted_labels = []
+
 		for data in test_data:
 			label = int(data[-1])
 			predicted = predict(data, pruned_models[i])
@@ -591,40 +650,6 @@ print("Average pruned classification rate: \n", pruned_class_rate_sum / 100)
 # print("Average depth of the ten pruned trees are: ", np.average(final_raw_depth_array))
 
 print('\n\n')
-
-# # Plot the tree diagram
-# #createPlot(models[0])
-#
-# np.random.shuffle(noisy_data)
-#
-# start_index = int(len(noisy_data) * 0.1)
-# test_data = noisy_data[:start_index]     #do 10 folds cross validation on this test.
-#
-# training_data = noisy_data[start_index:]
-# raw_models = cross_validation(training_data.tolist(), 0)
-#
-# # these two arrays will show the classification rates
-# # for each of the ten models
-# raw_model_classification = []
-# pruned_model_classification = []
-#
-# for i in range(len(raw_models)):
-# 	 class_rate = evaluate(raw_models[i], test_data)
-# 	 raw_model_classification.append(class_rate)
-#  #print("classification rate for ten raw models are: ")
-# # print(raw_model_classification)
-# print(raw_model_classification)
-#
-# pruned_models = cross_validation(training_data.tolist(), 1)
-#
-# for i in range(len(pruned_models)):
-# 	class_rate = evaluate(pruned_models[i], test_data)
-# 	pruned_model_classification.append(class_rate)
-#
-# #print("classification rate for ten pruned models are: ")
-# #print(pruned_model_classification)
-# print(pruned_model_classification)
-# print('$$$$$')
 
 
 ## first, we should use cross validation on the final test set, and generate confusion matrix and classification rate for that.
