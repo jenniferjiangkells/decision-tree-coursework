@@ -159,8 +159,8 @@ def evaluate(tree_model, test_data):
 
 	cmat = get_confusion_matrix(actual_labels,predicted_labels)
 	class_rate = classification_rate(cmat)
-
-	return class_rate
+	avg_class_rate = sum(class_rate) / len(class_rate)
+	return avg_class_rate
 
 
 ##################################################
@@ -281,7 +281,7 @@ def get_recall(confusion_matrix):
 		if sum(confusion_matrix[i, :]) == 0:
 			recall[i] = confusion_matrix[i, i]
 		else:
-			recall[i] = confusion_matrix[i, i] / (sum(confusion_matrix[i, :]))
+			recall[i] = confusion_matrix[i, i] / confusion_matrix.sum(axis = 1)[i]
 
 	return recall * 100
 
@@ -307,129 +307,61 @@ def f1_measure(precision_rate, recall_rate):
 
 
 def classification_rate(confusion_matrix):
-	#the classification rate is the diagonal of the confusion matrix (TP+TN) over total
-	classification = sum(confusion_matrix.diagonal()) / confusion_matrix.sum()
+    classification = np.zeros((4))
+    #the classification rate is the diagonal of the confusion matrix (TP+TN) over total
+    for i in range(4):
+        fn = int(confusion_matrix.sum(axis = 1)[i] - confusion_matrix[i,i])
+        fp = int(sum(confusion_matrix[:,i]) - confusion_matrix[i,i])
+        tp_tn = int(confusion_matrix.diagonal().sum(axis = 0))
+        total = fn + fp + tp_tn
+        classification[i] = tp_tn / total
 
-	return classification
+    return classification
 
 
 ##################################################
 #Plotting (Bonus)
 ##################################################
 
-#plot the tree
-decision_node = dict(boxstyle="square",fc="w")
-leaf_node = dict(boxstyle="square",fc="w")
-arrow_args = dict(arrowstyle="<-")
 
-def get_tree_width(tree):
-	leaf_num = 0
-	if tree['left'] is None:
-		return 0, 0
-	leftL, leftR = get_tree_width(tree['left'])
-	rightL, rightR = get_tree_width(tree['right'])
+fig, ax = plt.subplots(figsize=(18, 10))
 
-	left = min(leftL - 1, rightL + 1)
-	right = max(leftR - 1, rightR + 1)
+tree, depth = decision_tree_training(clean_data)
 
-	return left, right
+gap = 1.0/depth
 
-def get_tree_depth(tree, depth=1):
-	if tree is None:
-		depth = depth - 1
-		return depth
-	ldepth = get_tree_depth(tree['left'], depth + 1)
-	rdepth = get_tree_depth(tree['right'], depth + 1)
+def plot_graph(root, xmin, xmax, ymin, ymax):
+  queue = deque([(root, xmin, xmax, ymin, ymax)])
+  while len(queue) > 0:
+    q = queue.popleft()
+    node = q[0]
+    xmin = q[1]
+    xmax = q[2]
+    ymin = q[3]
+    ymax = q[4]
+    atri = node['attribute']
+    val = node['value']
+    text = '['+str(atri)+']:'+str(val)
 
-	return max(ldepth, rdepth)
+    center = xmin+(xmax-xmin)/2.0
+    d = (center-xmin)/2.0
 
-def plotNode(nodeTxt, centerPt, parentPt, nodeType, ax1):
-	plt.annotate(nodeTxt, xy=parentPt, xycoords='axes fraction',
-							xytext=centerPt, textcoords='axes fraction', fontsize=60,
-							va="center", ha="center", bbox=nodeType, arrowprops=arrow_args)
-def plotMidText(cntrPt, parentPt, txtString, ax1):
-	xMid = (parentPt[0] - cntrPt[0]) / 2.0 + cntrPt[0]
-	yMid = (parentPt[1] - cntrPt[1]) / 2.0 + cntrPt[1]
-	plt.text(xMid, yMid, txtString, va="center", ha="center", rotation=30)
+    if node['left'] != None:
+      queue.append((node['left'], xmin, center, ymin, ymax-gap))
+      ax.annotate(text, xy=(center-d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
 
-def plotTree(myTree, depth, parentPt, nodeTxt, ax1, params):
-	left, right = get_tree_width(myTree)
-	numLeafs = right - left
+    if node['right'] != None:
+      queue.append((node['right'], center, xmax, ymin, ymax-gap))
+      ax.annotate(text, xy=(center+d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
 
-	cntrPt = (params['xOff'] + (1.0 + float(numLeafs)) / params['totalW'] * 8, params['yOff'])
-	plotMidText(cntrPt, parentPt, nodeTxt, ax1)
-	plotNode(nodeTxt, cntrPt, parentPt, decision_node, ax1)
+    if node['left'] is None and node['right'] is None:
+      an1 = ax.annotate(node['label'], xy=(center, ymax), xycoords="data", va="bottom", ha="center",
+                        bbox=dict(boxstyle="round", fc="w"))
 
-	params['yOff'] = params['yOff'] - 1.0
+plot_graph(tree, 0.0, 1.0, 0.0, 1.0)
 
-	if not myTree['left'] is None:
-		plotTree(myTree['left'], depth - 1, cntrPt, '{} <= {}'.format(myTree['attribute'], myTree['value']), ax1, params)
-		plotTree(myTree['right'], depth - 1, cntrPt, '{} > {}'.format(myTree['attribute'], myTree['value']), ax1, params)
-	else:
-		params['xOff'] = params['xOff'] + 8.0 / params['totalW']
-		plotNode('label = {}'.format(myTree['label']), (params['xOff'], params['yOff']), cntrPt, leaf_node, ax1)
-		plotMidText((params['xOff'], params['yOff']), cntrPt, 'label = {}'.format(myTree['label']), ax1)
-	params['yOff'] = params['yOff'] + 1.0
-
-def createPlot(myTree):
-	fig = plt.figure(1, facecolor='white')
-	fig.clf()
-	depth = 10
-	axprops = dict(xticks=[], yticks=[])
-	ax1 = plt.subplot(111, frameon=False, **axprops)
-	left, right = get_tree_width(myTree)
-
-	params = {}
-	params['totalW'] = float(right - left)
-	params['totalD'] = float(depth)
-	params['xOff'] = -1
-	params['yOff'] = 1.0
-	plotTree(myTree, depth, (0.5, 1.0), 'root', ax1, params)
-
-	plt.show()
-
-##########################################
-#Use this plot function if the above doesn't run on Linux
-###########################################
-
-#fig, ax = plt.subplots(figsize=(18, 10))
-
-#tree, depth = decision_tree_training(clean_data)
-
-#gap = 1.0/depth
-
-#def plot_graph(root, xmin, xmax, ymin, ymax):
-#  queue = deque([(root, xmin, xmax, ymin, ymax)])
-#  while len(queue) > 0:
-#    q = queue.popleft()
-#    node = q[0]
-#    xmin = q[1]
-#    xmax = q[2]
-#    ymin = q[3]
-#    ymax = q[4]
-#    atri = node['attribute']
-#    val = node['value']
-#    text = '['+str(atri)+']:'+str(val)
-
-#    center = xmin+(xmax-xmin)/2.0
-#    d = (center-xmin)/2.0
-
-#    if node['left'] != None:
-#      queue.append((node['left'], xmin, center, ymin, ymax-gap))
-#      ax.annotate(text, xy=(center-d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
-
-#    if node['right'] != None:
-#      queue.append((node['right'], center, xmax, ymin, ymax-gap))
-#      ax.annotate(text, xy=(center+d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
-
-#    if node['left'] is None and node['right'] is None:
-#      an1 = ax.annotate(node['label'], xy=(center, ymax), xycoords="data", va="bottom", ha="center",
-#                        bbox=dict(boxstyle="round", fc="w"))
-
-#plot_graph(tree, 0.0, 1.0, 0.0, 1.0)
-
-#fig.subplots_adjust(top=0.83)
-#plt.show()
+fig.subplots_adjust(top=0.83)
+plt.show()
 
 ##################################################
 #Pruning
@@ -501,13 +433,13 @@ final_raw_cmat_sum = np.zeros((4, 4))
 final_raw_precision_sum = np.zeros((4))
 final_raw_recall_sum = np.zeros((4))
 final_raw_f1_sum = np.zeros((4))
-final_raw_class_rate_sum = 0
+final_raw_class_rate_sum = np.zeros((4))
 
 pruned_cmat_sum = np.zeros((4, 4))
 pruned_precision_sum = np.zeros((4))
 pruned_recall_sum = np.zeros((4))
 pruned_f1_sum = np.zeros((4))
-pruned_class_rate_sum = 0
+pruned_class_rate_sum = np.zeros((4))
 
 for i in range(10):
 
@@ -533,7 +465,6 @@ for i in range(10):
 	print("In fold ", i+1)
 
 	pruned_models = Inner_validation(training_data.tolist())
-
 	#createPlot(pruned_models[0])
 
 	for i in range(len(pruned_models)):
@@ -584,13 +515,13 @@ final_raw_cmat_sum = np.zeros((4, 4))
 final_raw_precision_sum = np.zeros((4))
 final_raw_recall_sum = np.zeros((4))
 final_raw_f1_sum = np.zeros((4))
-final_raw_class_rate_sum = 0
+final_raw_class_rate_sum = np.zeros((4))
 
 pruned_cmat_sum = np.zeros((4, 4))
 pruned_precision_sum = np.zeros((4))
 pruned_recall_sum = np.zeros((4))
 pruned_f1_sum = np.zeros((4))
-pruned_class_rate_sum = 0
+pruned_class_rate_sum = np.zeros((4))
 
 for i in range(10):
 	start = int(len(noisy_data) * i / 10)
