@@ -533,7 +533,10 @@ for i in range(10):
 	print("In fold ", i+1)
 
 	pruned_models = Inner_validation(training_data.tolist())
+<<<<<<< HEAD
 
+=======
+>>>>>>> 01aaa3546fd86ee41c670f0bbb30ff21af93f82e
 	#createPlot(pruned_models[0])
 
 	for i in range(len(pruned_models)):
