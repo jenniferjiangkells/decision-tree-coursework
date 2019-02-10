@@ -114,7 +114,7 @@ def decision_tree_training(training_data, depth=1):
 			all_same = False
 
 	if all_same:
-		# leaf node no care for attribute and value, since they all have same label
+		# return the model if the labels are all the same
 		return {'attribute': 0, 'value': 0,'left': None, 'right': None, 'length': len(training_data), 'label': first_label}, depth
 
 	# Find out the best split point
@@ -129,7 +129,7 @@ def decision_tree_training(training_data, depth=1):
 
 	return root_node, max(ldepth, rdepth)
 
-
+# returns what the model predicts given the data
 def predict(data, model):
 	tree = model
 	while True:
@@ -167,10 +167,9 @@ def evaluate(tree_model, test_data):
 #Evaluation
 ##################################################
 
-
-#this function generates ten pruned models.
+# this function trains ten raw models and their corresponding pruned models, then it compares the depth and average classification
+# for these models. It prints the depth and classification rates just for reference and it returns arrays of ten pruned models.
 def Inner_validation(dataset):
-	pruned_models_array = []
 	pre_pruned_depth_array = []
 	pruned_depth_array = []
 	pruned_models = []
@@ -179,11 +178,6 @@ def Inner_validation(dataset):
 	pruned_class_rate_array = []
 
 	for i in range(10):
-		pre_pruned_actual_labels=[]
-		pre_pruned_predicted_labels = []
-
-		pruned_actual_labels = []
-		pruned_predicted_labels = []
 
 		start = int(len(dataset) * i / 10)
 		end = int(len(dataset) * (i + 1) / 10)
@@ -194,25 +188,21 @@ def Inner_validation(dataset):
 
 		# get the pre_pruned_model and their stats
 		pre_pruned_model, pre_pruned_depth = decision_tree_training(training_data, depth = 1)
-
 		pre_pruned_class_rate = evaluate(pre_pruned_model, validation_data)
-
 		pre_pruned_class_rate_array.append(pre_pruned_class_rate)
-
 		pre_pruned_depth_array.append(pre_pruned_depth)
 
 		# get the corresponding pruned model and their stats
 		pruned_model = prune(pre_pruned_model, validation_data, pre_pruned_model)
 		pruned_depth = get_tree_depth(pruned_model, depth = 1)
-
 		pruned_depth_array.append(pruned_depth)
 
 		pruned_class_rate = evaluate(pruned_model, validation_data)
 		pruned_class_rate_array.append(pruned_class_rate)
 		pruned_models.append(pruned_model)
 
-	print("average pre_pruned tree depth is: \n", pre_pruned_depth_array)
-	print("average pruned tree depth is: \n", pruned_depth_array)
+	print("pre_pruned tree depth in inner cv is: \n", pre_pruned_depth_array)
+	print("pruned tree depth in inner cv is: \n", pruned_depth_array)
 	print("average pre_pruned class rate for 10 models in inner cv: \n", np.average(pre_pruned_class_rate_array))
 	print("average pruned class rate for 10 models in inner cv: \n", np.average(pruned_class_rate_array))
 	print("\n")
@@ -221,17 +211,9 @@ def Inner_validation(dataset):
 	return pruned_models
 
 
-# Evaluate accuracy, precision, recall and F1 score of dataset
-# This cross validation function takes in dataset, and essentially divide the dataset into ten folds to perform the
-# cross validation. If Pruned_or_Raw is 0, this function will return an array of ten raw models with their average stats at the end.
-# These ten models are basically produced
-# from ten different training dataset. If Pruned_or_Raw is 1, this means we are trying to do cv on pruned models. For every training
-# dataset(there will be 10 different training datasets), we will run another 10 fold cv on it by passing the training dataset into
-# the inner_validation function, which returns ten pruned models.
-
+# this function trains the model on the training data and test the model on the test data.
+# it returns all the stats necessary for computing confusion matrix
 def cross_validation(training_data, test_data):
-	models_array = []
-	depth_array = []
 
 	predicted_labels = []
 	actual_labels = []
@@ -319,10 +301,18 @@ def classification_rate(confusion_matrix):
     return classification
 
 
+def get_tree_depth(tree, depth=1):
+	if tree is None:
+		depth = depth - 1
+		return depth
+	ldepth = get_tree_depth(tree['left'], depth + 1)
+	rdepth = get_tree_depth(tree['right'], depth + 1)
+
+	return max(ldepth, rdepth)
+
 ##################################################
 #Plotting (Bonus)
 ##################################################
-
 
 fig, ax = plt.subplots(figsize=(18, 10))
 
@@ -331,32 +321,32 @@ tree, depth = decision_tree_training(clean_data)
 gap = 1.0/depth
 
 def plot_graph(root, xmin, xmax, ymin, ymax):
-  queue = deque([(root, xmin, xmax, ymin, ymax)])
-  while len(queue) > 0:
-    q = queue.popleft()
-    node = q[0]
-    xmin = q[1]
-    xmax = q[2]
-    ymin = q[3]
-    ymax = q[4]
-    atri = node['attribute']
-    val = node['value']
-    text = '['+str(atri)+']:'+str(val)
+ queue = deque([(root, xmin, xmax, ymin, ymax)])
+ while len(queue) > 0:
+   q = queue.popleft()
+   node = q[0]
+   xmin = q[1]
+   xmax = q[2]
+   ymin = q[3]
+   ymax = q[4]
+   atri = node['attribute']
+   val = node['value']
+   text = '['+str(atri)+']:'+str(val)
 
-    center = xmin+(xmax-xmin)/2.0
-    d = (center-xmin)/2.0
+   center = xmin+(xmax-xmin)/2.0
+   d = (center-xmin)/2.0
 
-    if node['left'] != None:
-      queue.append((node['left'], xmin, center, ymin, ymax-gap))
-      ax.annotate(text, xy=(center-d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
+   if node['left'] != None:
+     queue.append((node['left'], xmin, center, ymin, ymax-gap))
+     ax.annotate(text, xy=(center-d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
 
-    if node['right'] != None:
-      queue.append((node['right'], center, xmax, ymin, ymax-gap))
-      ax.annotate(text, xy=(center+d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
+   if node['right'] != None:
+     queue.append((node['right'], center, xmax, ymin, ymax-gap))
+     ax.annotate(text, xy=(center+d, ymax-gap), xytext=(center, ymax),arrowprops=dict(arrowstyle="->"),)
 
-    if node['left'] is None and node['right'] is None:
-      an1 = ax.annotate(node['label'], xy=(center, ymax), xycoords="data", va="bottom", ha="center",
-                        bbox=dict(boxstyle="round", fc="w"))
+   if node['left'] is None and node['right'] is None:
+     an1 = ax.annotate(node['label'], xy=(center, ymax), xycoords="data", va="bottom", ha="center",
+                       bbox=dict(boxstyle="round", fc="w"))
 
 plot_graph(tree, 0.0, 1.0, 0.0, 1.0)
 
@@ -367,7 +357,7 @@ plt.show()
 #Pruning
 ##################################################
 
-# Next we do pruning on trained tree
+# This function prunes the trained tree
 def prune(decision_tree, test_data, root):      #the inner cross validation is just the dataset we pass into prune function
 	if decision_tree is None:
 		return decision_tree
@@ -408,12 +398,10 @@ def prune(decision_tree, test_data, root):      #the inner cross validation is j
 
 	new_accuracy = evaluate(root, test_data)
 
-	# If got better result, apply the changes
+	# If got better result, apply the changes. Otherwise restore the original branch
 	if new_accuracy >= accuracy:
-		# print('New accuracy %f old accuracy: %f' % (new_accuracy, accuracy))
 		return decision_tree
 	else:
-		# print('Worse accuracy %f old accuracy %f' % (new_accuracy, accuracy))
 		decision_tree['left'] = left_tmp
 		decision_tree['right'] = right_tmp
 		return decision_tree
@@ -429,6 +417,7 @@ np.random.shuffle(clean_data)
 final_raw_depth_array = []
 pruned_depth_array = []
 
+# for producing the confusion matrix
 final_raw_cmat_sum = np.zeros((4, 4))
 final_raw_precision_sum = np.zeros((4))
 final_raw_recall_sum = np.zeros((4))
@@ -442,7 +431,8 @@ pruned_f1_sum = np.zeros((4))
 pruned_class_rate_sum = np.zeros((4))
 
 for i in range(10):
-
+	# we partition the dataset outside the cross validation function in order to reduce
+	# complexity involving inner validation
 	start = int(len(clean_data) * i / 10)
 	end = int(len(clean_data) * (i + 1) / 10)
 	test_data = clean_data[start:end]
@@ -581,8 +571,3 @@ print("Average pruned classification rate: \n", pruned_class_rate_sum / 100)
 # print("Average depth of the ten pruned trees are: ", np.average(final_raw_depth_array))
 
 print('\n\n')
-
-
-## first, we should use cross validation on the final test set, and generate confusion matrix and classification rate for that.
-## for the remaining training set, we also do cross validation(basically training and validation set) on our models
-## we just need average confusion matrix and class rate for the final test set.
