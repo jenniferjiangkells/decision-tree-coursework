@@ -14,9 +14,9 @@ import matplotlib.patches as mpatches
 from matplotlib.collections import PatchCollection
 from collections import deque
 
-##################################################
+####################################################################################################
 #Decision Tree
-##################################################
+####################################################################################################
 
 #Loading the data
 clean_data = np.loadtxt("./wifi_db/clean_dataset.txt")
@@ -26,7 +26,7 @@ noisy_data = np.loadtxt("./wifi_db/noisy_dataset.txt")
 # Func to calculate entropy of dataset
 def get_entropy(dataset):
 	total = len(dataset)
-	label_dict = {}   #labels and counts will be stored in this dictionary
+	label_dict = {}             #labels and corresponding counts will be stored in this dictionary
 
 	for data in dataset:
 		label = int(data[-1])
@@ -54,8 +54,8 @@ def remainder_entropy(ldata, rdata):
 # Find best split point
 def find_split(training_data):
 	if len(training_data) == 0:
-		return 0, 0, [], []       #returns a tuple of attribute, splitting value, left_data and right_data
-	attributes_length = len(training_data[0]) - 1   #returns number of attributes in the data
+		return 0, 0, [], []       # returns a tuple of attribute, splitting value, left_data and right_data
+	attributes_length = len(training_data[0]) - 1   # number of attributes in the data
 	best_information_gain = 0
 	best_split = (0, 0, [], [])
 
@@ -65,7 +65,7 @@ def find_split(training_data):
 		# sort the data based on each attribute
 		sorted_data = sorted(training_data, key=lambda x : x[attribute_index])
 
-		# find the best value of the attribute that splits label
+		# pick out the unique values
 		value_set = set()
 		values = []
 		for value in sorted_data:
@@ -163,12 +163,14 @@ def evaluate(tree_model, test_data):
 	return avg_class_rate
 
 
-##################################################
+#############################################################################################################
 #Evaluation
-##################################################
+#############################################################################################################
 
-# this function trains ten raw models and their corresponding pruned models, then it compares the depth and average classification
-# for these models. It prints the depth and classification rates just for reference and it returns arrays of ten pruned models.
+# this function trains ten raw models and their corresponding pruned models,
+# then it compares the depth and average classification
+# for these models. It prints the depth and classification rates just
+# for reference and it returns arrays of ten pruned models.
 def Inner_validation(dataset):
 	pre_pruned_depth_array = []
 	pruned_depth_array = []
@@ -206,9 +208,8 @@ def Inner_validation(dataset):
 	print("average pre_pruned class rate for 10 models in inner cv: \n", np.average(pre_pruned_class_rate_array))
 	print("average pruned class rate for 10 models in inner cv: \n", np.average(pruned_class_rate_array))
 	print("\n")
-	# print("Average depth of the ten pruned trees are: ", np.average(pruned_depth_array))
 
-	return pruned_models
+	return pruned_models, pruned_depth_array
 
 
 # this function trains the model on the training data and test the model on the test data.
@@ -233,7 +234,7 @@ def cross_validation(training_data, test_data):
 
 
 #helper functions to calculate stats and confusion matrix
-#########################################################
+######################################################################################################################
 def get_stats(actual_labels, predicted_labels):
 
 	cmat = get_confusion_matrix(actual_labels,predicted_labels)
@@ -310,9 +311,9 @@ def get_tree_depth(tree, depth=1):
 
 	return max(ldepth, rdepth)
 
-##################################################
+############################################################################################################
 #Plotting (Bonus)
-##################################################
+############################################################################################################
 
 fig, ax = plt.subplots(figsize=(18, 10))
 
@@ -353,9 +354,9 @@ plot_graph(tree, 0.0, 1.0, 0.0, 1.0)
 fig.subplots_adjust(top=0.83)
 plt.show()
 
-##################################################
+#######################################################################################################
 #Pruning
-##################################################
+#######################################################################################################
 
 # This function prunes the trained tree
 def prune(decision_tree, test_data, root):      #the inner cross validation is just the dataset we pass into prune function
@@ -387,6 +388,7 @@ def prune(decision_tree, test_data, root):      #the inner cross validation is j
 		decision_tree['length'] = count
 		return decision_tree
 
+	# copy the original branch
 	left_tmp = copy.deepcopy(decision_tree['left'])
 	right_tmp = copy.deepcopy(decision_tree['right'])
 
@@ -418,7 +420,7 @@ print("Evaluate on cleaned data")
 np.random.shuffle(clean_data)
 
 final_raw_depth_array = []
-pruned_depth_array = []
+pruned_depth_array1 = []
 
 # for producing the confusion matrix
 final_raw_cmat_sum = np.zeros((4, 4))
@@ -457,9 +459,8 @@ for i in range(10):
 
 	print("In fold ", i+1)
 
-	pruned_models = Inner_validation(training_data.tolist())
-	#createPlot(pruned_models[0])
-
+	pruned_models, pruned_depth = Inner_validation(training_data.tolist())
+	pruned_depth_array1.append(pruned_depth)
 	for i in range(len(pruned_models)):
 		pruned_actual_labels = []
 		pruned_predicted_labels = []
@@ -479,6 +480,7 @@ for i in range(10):
 		pruned_f1_sum += pruned_f1
 		pruned_class_rate_sum += pruned_classification
 
+print("In clean data, \n")
 print("Average final raw confusion matrix:\n", final_raw_cmat_sum / 10)
 print("Average final raw precision rate: \n", final_raw_precision_sum / 10)
 print("Average final raw recall rate: \n", final_raw_recall_sum / 10)
@@ -491,7 +493,7 @@ print("Average pruned precision rate: \n", pruned_precision_sum / 100)
 print("Average pruned recall rate: \n", pruned_recall_sum / 100)
 print("Average pruned F1 measure: \n", pruned_f1_sum / 100)
 print("Average pruned classification rate: \n", pruned_class_rate_sum / 100)
-# print("Average depth of the ten pruned trees are: ", np.average(final_raw_depth_array))
+print("Average depth of the hundred pruned trees are: ", np.average(pruned_depth_array1))
 
 print('\n\n')
 
@@ -502,7 +504,7 @@ print('Evaluate on noisy dataset')
 np.random.shuffle(noisy_data)
 
 final_raw_depth_array = []
-pruned_depth_array = []
+pruned_depth_array2 = []
 
 final_raw_cmat_sum = np.zeros((4, 4))
 final_raw_precision_sum = np.zeros((4))
@@ -538,8 +540,8 @@ for i in range(10):
 
 	print("In fold ", i+1)
 
-	pruned_models = Inner_validation(training_data.tolist())
-
+	pruned_models, pruned_depth = Inner_validation(training_data.tolist())
+	pruned_depth_array2.append(pruned_depth)
 	for i in range(len(pruned_models)):
 		pruned_actual_labels = []
 		pruned_predicted_labels = []
@@ -559,6 +561,7 @@ for i in range(10):
 		pruned_f1_sum += pruned_f1
 		pruned_class_rate_sum += pruned_classification
 
+print("In noisy data, \n")
 print("Average final raw confusion matrix:\n", final_raw_cmat_sum / 10)
 print("Average final raw precision rate: \n", final_raw_precision_sum / 10)
 print("Average final raw recall rate: \n", final_raw_recall_sum / 10)
@@ -571,6 +574,6 @@ print("Average pruned precision rate: \n", pruned_precision_sum / 100)
 print("Average pruned recall rate: \n", pruned_recall_sum / 100)
 print("Average pruned F1 measure: \n", pruned_f1_sum / 100)
 print("Average pruned classification rate: \n", pruned_class_rate_sum / 100)
-# print("Average depth of the ten pruned trees are: ", np.average(final_raw_depth_array))
+print("Average depth of the hundred pruned trees are: ", np.average(pruned_depth_array2))
 
 print('\n\n')
