@@ -1,4 +1,4 @@
-# Group 69 Decision Tree CBC
+# Decision Tree CBC
 
 Final_Decision_Tree is preloaded with two sets of datasets (clean and noisy data on WIFI strengths in different rooms)
 and will train, plot, predict, evaluate, and prune decision trees based on these datasets using 10-fold evaluation.
